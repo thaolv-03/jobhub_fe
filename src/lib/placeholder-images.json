@@ -1,0 +1,52 @@
+{
+  "placeholderImages": [
+    {
+      "id": "job-hero",
+      "description": "A modern office environment with people working collaboratively.",
+      "imageUrl": "https://images.unsplash.com/photo-1556761175-4b46a572b786?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxtb2Rlcm4lMjBvZmZpY2V8ZW58MHx8fHwxNzYyODc4MTYxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modern office"
+    },
+    {
+      "id": "company-logo-fpt",
+      "description": "FPT Software company logo",
+      "imageUrl": "https://images.unsplash.com/photo-1550686056-5aecfff3b635?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxGUFQlMjBsb2dvfGVufDB8fHx8MTc2Mjk2MjA0M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "FPT logo"
+    },
+    {
+      "id": "company-logo-viettel",
+      "description": "Viettel company logo",
+      "imageUrl": "https://images.unsplash.com/photo-1676822167427-9b9a4f3aa58e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8VmlldHRlbCUyMGxvZ298ZW58MHx8fHwxNzYyOTYyMDQzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "Viettel logo"
+    },
+    {
+      "id": "company-logo-vng",
+      "description": "VNG Corporation company logo",
+      "imageUrl": "https://images.unsplash.com/photo-1572430305634-177725350518?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxWTkclMjBsb2dvfGVufDB8fHx8MTc2Mjk2MjA0M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "VNG logo"
+    },
+    {
+      "id": "company-logo-momo",
+      "description": "MoMo company logo",
+      "imageUrl": "https://images.unsplash.com/photo-1703467737388-504f7a51a84b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxNb01vJTIwbG9nb3xlbnwwfHx8fDE3NjI5NjIwNDN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "MoMo logo"
+    },
+    {
+      "id": "company-logo-tiki",
+      "description": "Tiki company logo",
+      "imageUrl": "https://images.unsplash.com/photo-1595409583957-5d1ec5869de9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8VGlraSUyMGxvZ298ZW58MHx8fHwxNzYyOTYyMDQzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "Tiki logo"
+    },
+    {
+      "id": "company-logo-shopee",
+      "description": "Shopee company logo",
+      "imageUrl": "https://images.unsplash.com/photo-1594184861440-9bce35c61c7c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxTaG9wZWUlMjBsb2dvfGVufDB8fHx8MTc2Mjk2MjA0M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "Shopee logo"
+    },
+    {
+      "id": "job-detail-banner",
+      "description": "A person working on a laptop in a cafe.",
+      "imageUrl": "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxsYXB0b3AlMjB3b3JrfGVufDB8fHx8MTc2MjkxNTU0Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "laptop work"
+    }
+  ]
+}
