@@ -2,7 +2,8 @@
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Account, getAccount, getAccessToken, clearAuthData, login, LoginRequest, logout as apiLogout, RoleName } from '@/lib/auth';
+import { Account, getAccount, getAccessToken, clearAuthData, login as apiLogin, LoginRequest, logout as apiLogout, RoleName } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   account: Account | null;
@@ -21,6 +22,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [account, setAccount] = useState<Account | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   const checkAuthState = useCallback(() => {
     setIsLoading(true);
@@ -59,16 +61,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [checkAuthState]);
 
   const handleLogin = async (credentials: LoginRequest): Promise<Account> => {
-    const loginResponse = await login(credentials);
-    setAccount(loginResponse.account);
-    setAccessToken(loginResponse.accessToken);
-    return loginResponse.account;
+    const account = await apiLogin(credentials);
+    checkAuthState(); // Reload state from storage
+    return account;
   };
 
   const handleLogout = async () => {
-    await apiLogout();
-    setAccount(null);
-    setAccessToken(null);
+    try {
+        await apiLogout();
+    } catch (error) {
+        console.error("API logout failed, clearing client-side data anyway.", error);
+    } finally {
+        clearAuthData();
+        setAccount(null);
+        setAccessToken(null);
+    }
   };
   
   const roles = account?.roles.map(r => r.roleName) || [];

@@ -18,7 +18,7 @@ import { Loader2 } from "lucide-react";
 
 const verifySchema = z.object({
     email: z.string().email(),
-    otp: z.string().min(5, { message: "OTP phải có 5 ký tự." }).max(5, { message: "OTP phải có 5 ký tự."}),
+    otp: z.string().min(6, { message: "OTP phải có 6 ký tự." }).max(6, { message: "OTP phải có 6 ký tự."}),
 });
 
 function VerifyRegistrationForm() {

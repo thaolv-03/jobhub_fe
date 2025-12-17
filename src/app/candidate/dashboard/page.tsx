@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Upload, X } from "lucide-react";
+import { Upload } from "lucide-react";
 import React from "react";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Image from "next/image";
@@ -17,6 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 const profileSchema = z.object({
     name: z.string().min(1, { message: "Họ và tên không được để trống." }),
@@ -37,11 +38,6 @@ const initialUser = {
     bio: "Full-stack developer with over 5 years of experience in building modern web applications. Passionate about creating clean, efficient, and user-friendly solutions."
 };
 
-const appliedJobs = [
-  { id: 1, title: "Kỹ sư phần mềm (ReactJS, NodeJS)", company: "FPT Software", status: "Đang chờ", appliedDate: "20/07/2024" },
-  { id: 2, title: "UI/UX Designer", company: "VNG Corporation", status: "Đã xem", appliedDate: "18/07/2024" },
-  { id: 3, title: "Chuyên viên phân tích dữ liệu", company: "Viettel", status: "Từ chối", appliedDate: "15/07/2024" },
-];
 
 const recommendedJobs = [
     { id: 4, title: "Product Manager", company: "MoMo", location: "TP. Hồ Chí Minh", salary: "Cạnh tranh", logoId: "company-logo-momo" },
@@ -50,7 +46,6 @@ const recommendedJobs = [
 
 export default function CandidateDashboardPage() {
     const { toast } = useToast();
-    const [uploadedCvs, setUploadedCvs] = React.useState(["Fullstack_Developer_CV.pdf"]);
     const [avatar, setAvatar] = React.useState(initialUser.avatar);
 
     const form = useForm<z.infer<typeof profileSchema>>({
@@ -76,32 +71,6 @@ export default function CandidateDashboardPage() {
         });
     };
     
-    const handleCvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            if (file.type !== 'application/pdf') {
-                toast({ title: "Lỗi", description: "Vui lòng chỉ tải lên file PDF.", variant: "destructive" });
-                return;
-            }
-            if (file.size > 5 * 1024 * 1024) { // 5MB
-                 toast({ title: "Lỗi", description: "Kích thước file không được vượt quá 5MB.", variant: "destructive" });
-                return;
-            }
-            if (uploadedCvs.includes(file.name)) {
-                toast({ title: "Lỗi", description: "Tên file đã tồn tại. Vui lòng đổi tên và thử lại.", variant: "destructive" });
-                return;
-            }
-
-            setUploadedCvs(prev => [...prev, file.name]);
-            toast({ title: "Thành công", description: `Đã tải lên CV: ${file.name}` });
-        }
-    };
-
-    const removeCv = (cvName: string) => {
-        setUploadedCvs(uploadedCvs.filter(cv => cv !== cvName));
-        toast({ title: "Đã xóa CV.", description: `${cvName} đã được xóa.`, variant: "destructive" });
-    };
-
      const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
@@ -117,8 +86,8 @@ export default function CandidateDashboardPage() {
     return (
         <div className="flex min-h-screen w-full flex-col bg-muted/40">
             <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-                <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
-                    <div className="lg:col-span-2 grid auto-rows-max items-start gap-4">
+                <div className="grid gap-4 md:grid-cols-3 md:gap-8">
+                    <div className="md:col-span-2 grid auto-rows-max items-start gap-4">
                         <Card>
                             <CardHeader>
                                 <CardTitle>Thông tin cá nhân</CardTitle>
@@ -226,73 +195,8 @@ export default function CandidateDashboardPage() {
                                 </Form>
                             </CardContent>
                         </Card>
-                        
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Việc làm đã ứng tuyển</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                        <thead className="bg-gray-50 dark:bg-gray-800">
-                                            <tr>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vị trí</th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Công ty</th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày nộp</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                                            {appliedJobs.map(job => (
-                                                <tr key={job.id}>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{job.title}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{job.company}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                        <Badge variant={job.status === 'Từ chối' ? 'destructive' : 'secondary'}>{job.status}</Badge>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{job.appliedDate}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </CardContent>
-                        </Card>
                     </div>
                     <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Quản lý CV</CardTitle>
-                                <CardDescription>Tải lên và quản lý các CV của bạn.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="grid gap-4">
-                               <div className="flex items-center justify-center w-full">
-                                    <Label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted">
-                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                            <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Nhấn để tải lên</span> hoặc kéo thả</p>
-                                            <p className="text-xs text-muted-foreground">PDF (Tối đa 5MB)</p>
-                                        </div>
-                                        <Input id="dropzone-file" type="file" className="hidden" accept=".pdf" onChange={handleCvUpload} />
-                                    </Label>
-                                </div>
-                                <div className="space-y-2">
-                                    <p className="font-medium">CV đã tải lên:</p>
-                                    {uploadedCvs.length > 0 ? (
-                                        uploadedCvs.map(cv => (
-                                        <div key={cv} className="flex items-center justify-between rounded-lg border bg-background p-3">
-                                            <p className="text-sm font-medium truncate pr-2">{cv}</p>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => removeCv(cv)}>
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground text-center py-4">Chưa có CV nào được tải lên.</p>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
                          <Card>
                             <CardHeader>
                                 <CardTitle>Gợi ý cho bạn</CardTitle>
@@ -302,14 +206,14 @@ export default function CandidateDashboardPage() {
                                 {recommendedJobs.map(job => {
                                      const logo = PlaceHolderImages.find(p => p.id === job.logoId);
                                      return (
-                                        <div key={job.id} className="flex items-start gap-4">
+                                        <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-start gap-4 group">
                                             {logo && <Image src={logo.imageUrl} alt={`${job.company} logo`} width={48} height={48} className="rounded-lg" data-ai-hint={logo.imageHint} />}
                                             <div className="grid gap-1">
-                                                <p className="text-sm font-medium leading-none">{job.title}</p>
+                                                <p className="text-sm font-medium leading-none group-hover:text-primary">{job.title}</p>
                                                 <p className="text-sm text-muted-foreground">{job.company}</p>
                                             </div>
-                                            <Button variant="outline" size="sm" className="ml-auto">Xem</Button>
-                                        </div>
+                                            <Button variant="outline" size="sm" className="ml-auto opacity-0 group-hover:opacity-100">Xem</Button>
+                                        </Link>
                                      )
                                 })}
                             </CardContent>
@@ -320,5 +224,3 @@ export default function CandidateDashboardPage() {
         </div>
     );
 }
-
-    

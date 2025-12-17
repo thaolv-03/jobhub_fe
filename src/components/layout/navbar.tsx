@@ -24,7 +24,7 @@ export function Navbar() {
   }
   
   const getDashboardPath = () => {
-      if (roles.includes('ADMIN')) return '/employer/dashboard';
+      if (roles.includes('ADMIN')) return '/employer/dashboard'; // Assuming Admin uses employer dash for now
       if (roles.includes('RECRUITER')) return '/employer/dashboard';
       if (roles.includes('JOB_SEEKER')) return '/candidate/dashboard';
       return '/';

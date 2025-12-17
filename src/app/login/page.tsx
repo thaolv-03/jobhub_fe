@@ -7,30 +7,30 @@ import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/layout/navbar";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Account, RoleName } from "@/lib/auth";
+import { Account } from "@/lib/auth";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-const loginSchema = z.object({
-  email: z.string().email({ message: "Email không hợp lệ." }),
-  password: z.string().min(8, { message: "Mật khẩu phải có ít nhất 8 ký tự." }),
-});
+
+// No Zod schema, validation is handled by the backend.
+type LoginFormValues = {
+  email: string;
+  password: string;
+};
 
 export default function LoginPage() {
     const { toast } = useToast();
     const { login } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [isLoading, setIsLoading] = useState(false);
 
-    const form = useForm<z.infer<typeof loginSchema>>({
-        resolver: zodResolver(loginSchema),
+    const form = useForm<LoginFormValues>({
         defaultValues: {
             email: "",
             password: "",
@@ -45,7 +45,7 @@ export default function LoginPage() {
         return '/';
     }
 
-    const handleLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
+    const handleLoginSubmit = async (values: LoginFormValues) => {
         setIsLoading(true);
         try {
             const account = await login(values);
@@ -53,7 +53,8 @@ export default function LoginPage() {
               title: "Đăng nhập thành công!",
               description: "Chào mừng bạn đã trở lại.",
             });
-            const redirectPath = getRedirectPath(account);
+            const nextUrl = searchParams.get('next');
+            const redirectPath = nextUrl || getRedirectPath(account);
             router.push(redirectPath);
         } catch (error) {
             const errorMessage = error instanceof ApiError ? error.message : "Đã có lỗi xảy ra. Vui lòng thử lại.";

@@ -1,6 +1,6 @@
 
 'use client';
-import { apiRequest, ApiResponse } from './api-client';
+import { apiRequest, ApiError, ApiResponse } from './api-client';
 
 // ===== TYPE DEFINITIONS =====
 export type RoleName = "ADMIN" | "RECRUITER" | "JOB_SEEKER";
@@ -47,16 +47,16 @@ export interface VerifyRegistrationRequest {
     otp: string;
 }
 
-export interface ForgotPasswordRequest {
+export type ForgotPasswordRequest = {
     email: string;
 }
 
-export interface VerifyOtpRequest {
+export type VerifyOtpRequest = {
     email: string;
     otp: string;
 }
 
-export interface ResetPasswordRequest {
+export type ResetPasswordRequest = {
     email: string;
     newPassword?: string;
 }
@@ -72,7 +72,8 @@ const ACCESS_TOKEN_KEY = 'jobhub_access_token';
 const ACCOUNT_KEY = 'jobhub_account';
 const REFRESH_TOKEN_COOKIE_KEY = 'jobhub_refresh_token';
 
-function setCookie(name: string, value: string, days: number = 7) {
+export function setCookie(name: string, value: string, days: number = 7) {
+    if (typeof window === 'undefined') return;
     let expires = "";
     if (days) {
         const date = new Date();
@@ -82,7 +83,8 @@ function setCookie(name: string, value: string, days: number = 7) {
     document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
 }
 
-function getCookie(name: string): string | null {
+export function getCookie(name: string): string | null {
+    if (typeof window === 'undefined') return null;
     const nameEQ = name + "=";
     const ca = document.cookie.split(';');
     for (let i = 0; i < ca.length; i++) {
@@ -94,6 +96,7 @@ function getCookie(name: string): string | null {
 }
 
 function eraseCookie(name: string) {
+    if (typeof window === 'undefined') return;
     document.cookie = name + '=; Max-Age=-99999999; path=/; SameSite=Lax;';
 }
 
@@ -144,13 +147,17 @@ export function clearAuthData(): void {
 
 // ===== API FUNCTIONS =====
 
-export async function login(payload: LoginRequest): Promise<LoginResponse> {
+export async function login(payload: LoginRequest): Promise<Account> {
     const response = await apiRequest<LoginResponse>('/api/auth/login', {
         method: 'POST',
         body: payload,
     });
-    saveAuthData(response.data);
-    return response.data;
+    const loginData = response.data;
+    if (!loginData) {
+        throw new ApiError(500, 'INTERNAL_ERROR', 'Login response did not contain data.');
+    }
+    saveAuthData(loginData);
+    return loginData.account;
 }
 
 export async function logout(): Promise<void> {
@@ -170,9 +177,8 @@ export async function logout(): Promise<void> {
         });
     } catch (error: any) {
         console.error("Logout failed:", error.message);
-        // Clear data even if API call fails for critical errors like 401
-        if (error.code === 401 || error.status === 'INVALID_TOKEN' || error.status === 'UNAUTHORIZED' || error.status === 'UNAUTHENTICATED') {
-            // continue to finally block
+        if (error instanceof ApiError && (error.code === 401 || error.status === 'INVALID_TOKEN' || error.status === 'UNAUTHORIZED' || error.status === 'UNAUTHENTICATED')) {
+            // continue to finally block to clear data
         } else {
             throw error; // re-throw other errors
         }
@@ -205,14 +211,18 @@ export async function resetPassword(params: ResetPasswordRequest): Promise<ApiRe
 export async function refreshToken(): Promise<RefreshTokenResponse> {
     const currentRefreshToken = getRefreshToken();
     if (!currentRefreshToken) {
-        throw new Error('No refresh token available.');
+        throw new ApiError(401, 'NO_REFRESH_TOKEN', 'No refresh token available.');
     }
     const response = await apiRequest<RefreshTokenResponse>('/api/auth/refresh-token', {
         method: 'POST',
         refreshToken: currentRefreshToken,
     });
-    saveTokens(response.data);
-    return response.data;
+    const tokenData = response.data;
+    if (!tokenData) {
+        throw new ApiError(500, 'INTERNAL_ERROR', 'Refresh token response did not contain data.');
+    }
+    saveTokens(tokenData);
+    return tokenData;
 }
 
 export async function register(payload: RegisterRequest): Promise<ApiResponse<null>> {
