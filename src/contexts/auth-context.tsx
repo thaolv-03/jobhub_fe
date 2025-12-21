@@ -2,8 +2,8 @@
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Account, getAccount, getAccessToken, clearAuthData, login as apiLogin, LoginRequest, logout as apiLogout, RoleName } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
+import { Account, getAccount, getAccessToken, clearAuthData, login as apiLogin, LoginRequest, logout as apiLogout, RoleName, upgradeToRecruiter as apiUpgradeToRecruiter, UpgradeRecruiterRequest } from '@/lib/auth';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface AuthContextType {
   account: Account | null;
@@ -14,6 +14,7 @@ interface AuthContextType {
   login: (credentials: LoginRequest) => Promise<Account>;
   logout: () => Promise<void>;
   reload: () => void;
+  upgradeToRecruiter: (payload: UpgradeRecruiterRequest) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +24,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   const checkAuthState = useCallback(() => {
     setIsLoading(true);
@@ -62,7 +64,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const handleLogin = async (credentials: LoginRequest): Promise<Account> => {
     const account = await apiLogin(credentials);
-    checkAuthState(); // Reload state from storage
+    checkAuthState(); // Reload state from storage to ensure it's fresh
     return account;
   };
 
@@ -75,7 +77,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         clearAuthData();
         setAccount(null);
         setAccessToken(null);
+        // Redirect to a public page after logout
+        if(pathname.startsWith('/candidate') || pathname.startsWith('/employer')) {
+            router.push('/');
+        }
     }
+  };
+
+  const handleUpgrade = async (payload: UpgradeRecruiterRequest) => {
+    await apiUpgradeToRecruiter(payload);
+    checkAuthState(); // Reload state to get new roles
   };
   
   const roles = account?.roles.map(r => r.roleName) || [];
@@ -91,6 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login: handleLogin,
         logout: handleLogout,
         reload: checkAuthState,
+        upgradeToRecruiter: handleUpgrade,
       }}
     >
       {children}
