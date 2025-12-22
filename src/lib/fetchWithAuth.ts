@@ -109,7 +109,8 @@ export async function fetchWithAuth<T>(
 
   const headers = new Headers(options.headers);
   const storedToken = getAccessToken();
-  const token = storedToken ?? options.accessToken;
+  const hasAccessToken = Object.prototype.hasOwnProperty.call(options, "accessToken");
+  const token = hasAccessToken ? options.accessToken : storedToken;
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
   }
