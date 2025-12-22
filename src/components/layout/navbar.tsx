@@ -1,6 +1,6 @@
-
 "use client";
 
+import type { MouseEvent } from "react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "../ui/button";
@@ -11,10 +11,12 @@ import { useRouter } from "next/navigation";
 import { Skeleton } from "../ui/skeleton";
 import { LogOut, LayoutDashboard, Settings, Briefcase } from "lucide-react";
 import { Container } from "@/components/layout/container";
+import { useCandidateProfileGate } from "@/contexts/candidate-profile-context";
 
 export function Navbar() {
   const { account, isAuthenticated, isLoading, logout, roles } = useAuth();
   const router = useRouter();
+  const { ensureProfile } = useCandidateProfileGate();
 
   const handleLogout = async () => {
     await logout();
@@ -26,7 +28,10 @@ export function Navbar() {
   
   const getDashboardPath = () => {
       const userRoles = roles;
-      if (userRoles.includes('RECRUITER') || userRoles.includes('RECRUITER_PENDING') || userRoles.includes('ADMIN')) {
+      if (userRoles.includes('ADMIN')) {
+        return '/admin/dashboard';
+      }
+      if (userRoles.includes('RECRUITER') || userRoles.includes('RECRUITER_PENDING')) {
         return '/employer/dashboard';
       }
       if (userRoles.includes('JOB_SEEKER')) {
@@ -42,6 +47,15 @@ export function Navbar() {
     }
     // Always redirect to the employer dashboard. The layout will handle role-based redirection.
     router.push('/employer/dashboard');
+  };
+
+  const handleCandidateProfileClick = async (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (!isAuthenticated) {
+      router.push("/login?next=/candidate/dashboard/cv");
+      return;
+    }
+    await ensureProfile({ type: "OPEN_PROFILE" });
   };
 
 
@@ -137,8 +151,9 @@ export function Navbar() {
               Tìm việc làm
             </Link>
             <Link
-              href="/candidate/dashboard/cv"
+              href="/candidate/dashboard"
               className="text-muted-foreground transition-colors hover:text-primary"
+              onClick={handleCandidateProfileClick}
               >
               Hồ sơ & CV
             </Link>

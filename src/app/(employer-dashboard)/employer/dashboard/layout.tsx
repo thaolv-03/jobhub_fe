@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar";
+import { Navbar } from "@/components/layout/navbar";
 import {
   Sidebar,
   SidebarContent,
@@ -356,6 +357,11 @@ export default function EmployerDashboardLayout({
   const { logout, roles } = useAuth();
   const router = useRouter();
   const showSidebar = roles.includes('RECRUITER');
+  const showSiteNavbar = [
+    '/employer/dashboard/upgrade-recruiter',
+    '/employer/dashboard/consulting-need',
+    '/employer/dashboard/pending-approval',
+  ].includes(pathname);
 
   const handlePostJobClick = () => {
     if (roles.includes('RECRUITER')) {
@@ -382,42 +388,46 @@ export default function EmployerDashboardLayout({
     <SidebarProvider defaultOpen>
       <RecruiterSidebar pathname={pathname} onPostJob={handlePostJobClick} showSidebar={showSidebar} />
       <SidebarInset>
-        <DashboardTopbar
-          title={pageMeta.title}
-          subtitle={pageMeta.subtitle}
-          showSidebar={showSidebar}
-          roleLabel="Recruiter"
-          searchPlaceholder="Tìm kiếm nhanh..."
-          primaryAction={
-            <Button size="sm" className="hidden gap-2 md:inline-flex" onClick={handlePostJobClick}>
-              <PlusCircle className="h-4 w-4" />
-              Đăng tin mới
-            </Button>
-          }
-          rightActions={
-            <>
-              <ThemeToggle />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src="" alt="Recruiter avatar" />
-                      <AvatarFallback>RH</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>Hồ sơ</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Đăng xuất
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          }
-        />
+        {showSiteNavbar ? (
+          <Navbar />
+        ) : (
+          <DashboardTopbar
+            title={pageMeta.title}
+            subtitle={pageMeta.subtitle}
+            showSidebar={showSidebar}
+            roleLabel="Recruiter"
+            searchPlaceholder="Tìm kiếm nhanh..."
+            primaryAction={
+              <Button size="sm" className="hidden gap-2 md:inline-flex" onClick={handlePostJobClick}>
+                <PlusCircle className="h-4 w-4" />
+                Đăng tin mới
+              </Button>
+            }
+            rightActions={
+              <>
+                <ThemeToggle />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src="" alt="Recruiter avatar" />
+                        <AvatarFallback>RH</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>Hồ sơ</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Đăng xuất
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            }
+          />
+        )}
         <main className="flex-1 bg-muted/30">
           <EmployerDashboardGuard>{children}</EmployerDashboardGuard>
         </main>

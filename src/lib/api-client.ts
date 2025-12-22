@@ -10,9 +10,10 @@ export async function apiRequest<T>(
         body?: any;
         accessToken?: string | null;
         refreshToken?: string | null;
+        suppressAuthFailure?: boolean;
     } = {}
 ): Promise<ApiResponse<T>> {
-    const { method = 'GET', body, accessToken, refreshToken } = options;
+    const { method = 'GET', body, accessToken, refreshToken, suppressAuthFailure } = options;
 
     const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}${path}`;
 
@@ -29,7 +30,7 @@ export async function apiRequest<T>(
     }
 
     if (refreshToken) {
-        headers['Refresh-Token'] = refreshToken;
+        headers['refresh_token'] = refreshToken;
     }
 
     try {
@@ -38,6 +39,7 @@ export async function apiRequest<T>(
             headers,
             body: body ? JSON.stringify(body) : undefined,
             accessToken,
+            suppressAuthFailure,
         });
 
         return responseData;

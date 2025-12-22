@@ -33,7 +33,7 @@ const banners: BannerItem[] = [
   {
     id: "banner-3",
     title: "Cập nhật hồ sơ nhanh",
-    href: "/candidate/dashboard/cv",
+    href: "/candidate/dashboard",
     backgroundClass: "bg-gradient-to-br from-emerald-400/20 via-emerald-100/50 to-transparent",
   },
   {

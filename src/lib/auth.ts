@@ -204,7 +204,7 @@ export async function upgradeToRecruiter(payload: UpgradeRecruiterRequest): Prom
 
     // Optimistically mark account as pending so layout can redirect immediately.
     try {
-        const cached = getAccount();
+        const cached = getAccount<Account>();
         const hasPending = cached?.roles?.some(r => r.roleName === 'RECRUITER_PENDING');
         if (cached && !hasPending) {
             const updated = {
@@ -243,7 +243,7 @@ export async function upgradeToRecruiter(payload: UpgradeRecruiterRequest): Prom
 
         // Fallback: tag cached account with RECRUITER_PENDING so UI can redirect correctly.
         try {
-            const cached = getAccount();
+            const cached = getAccount<Account>();
             const hasPending = cached?.roles?.some(r => r.roleName === 'RECRUITER_PENDING');
             if (cached && !hasPending) {
                 const updated = {

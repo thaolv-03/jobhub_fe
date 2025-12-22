@@ -6,9 +6,11 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { MapPin, DollarSign, Briefcase, Bookmark, Share2, CalendarClock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Container } from "@/components/layout/container";
+import { useCandidateProfileGate } from "@/contexts/candidate-profile-context";
+import { useAuth } from "@/hooks/use-auth";
 
 const allJobs = [
   {
@@ -57,8 +59,22 @@ const allJobs = [
 
 export default function JobDetailPage() {
   const params = useParams();
-  const jobData = allJobs.find((job) => job.id === params.id);
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const { ensureProfile } = useCandidateProfileGate();
+  const jobId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const jobData = allJobs.find((job) => job.id === jobId);
   const bannerImage = PlaceHolderImages.find((p) => p.id === "job-detail-banner");
+  const handleApply = async () => {
+    if (!jobId) {
+      return;
+    }
+    if (!isAuthenticated) {
+      router.push(`/login?next=/jobs/${jobId}`);
+      return;
+    }
+    await ensureProfile({ type: "APPLY_JOB", jobId, jobTitle: jobData?.title });
+  };
 
   if (!jobData) {
     return (
@@ -119,7 +135,7 @@ export default function JobDetailPage() {
               <div className="flex items-center gap-2 mt-4 md:mt-0">
                 <Button variant="outline" size="icon"><Bookmark /></Button>
                 <Button variant="outline" size="icon"><Share2 /></Button>
-                <Button size="lg" className="ml-2">Ứng tuyển ngay</Button>
+                <Button size="lg" className="ml-2" onClick={handleApply}>Ứng tuyển ngay</Button>
               </div>
             </div>
           </div>

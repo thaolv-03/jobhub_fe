@@ -58,7 +58,7 @@ export default function ApplicantsDetailPage() {
         setApplications(response.data?.items || []);
       } catch (error) {
         const apiError = error as ApiError;
-        setErrorMessage(apiError.message || 'Khong the tai danh sach ung vien.');
+        setErrorMessage(apiError.message || 'Không thể tải danh sách ứng viên.');
       } finally {
         setIsLoading(false);
       }
@@ -72,11 +72,11 @@ export default function ApplicantsDetailPage() {
       <Card>
         <CardHeader className="flex flex-row items-center">
           <div className="grid gap-2">
-            <CardTitle>Danh sach ung vien</CardTitle>
-            <CardDescription>Danh sach ung vien cho tin tuyen dung #{jobId}.</CardDescription>
+            <CardTitle>Danh sách ứng viên</CardTitle>
+            <CardDescription>Danh sách ứng viên cho tin tuyển dụng #{jobId}.</CardDescription>
           </div>
           <Button asChild variant="outline" className="ml-auto">
-            <Link href="/employer/dashboard/applicants">Quay lai</Link>
+            <Link href="/employer/dashboard/applicants">Quay lại</Link>
           </Button>
         </CardHeader>
         <CardContent>
@@ -91,16 +91,16 @@ export default function ApplicantsDetailPage() {
             </div>
           ) : applications.length === 0 ? (
             <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Chua co ung vien nao cho tin nay.
+              Chưa có ứng viên nào cho tin này.
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Application ID</TableHead>
-                  <TableHead className="text-center">Ung vien</TableHead>
-                  <TableHead className="text-center">Ngay nop</TableHead>
-                  <TableHead className="text-center">Trang thai</TableHead>
+                  <TableHead className="text-center">Ứng viên</TableHead>
+                  <TableHead className="text-center">Ngày nộp</TableHead>
+                  <TableHead className="text-center">Trạng thái</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

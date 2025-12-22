@@ -111,7 +111,7 @@ export default function EmployerDashboardPage() {
       try {
         const jobsResponse = await searchJobs<PageListDTO<JobDTO>>({
           pagination: { page: 0, pageSize: DEFAULT_PAGE_SIZE },
-          sortedBy: [{ field: 'createdDate', sort: 'desc' }],
+          sortedBy: [{ field: 'createAt', sort: 'desc' }],
           searchedBy: '',
           filter: null,
         }, accessToken);

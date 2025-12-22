@@ -80,6 +80,17 @@ export function getAccount<T = unknown>(): T | null {
   return null;
 }
 
+export function updateAccount<T = unknown>(updater: (account: T | null) => T | null): void {
+  if (typeof window === "undefined") return;
+  const current = getAccount<T>();
+  const next = updater(current);
+  if (next) {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(next));
+  } else {
+    localStorage.removeItem(ACCOUNT_KEY);
+  }
+}
+
 export function clearAuthData(): void {
   if (typeof window !== "undefined") {
     localStorage.removeItem(ACCESS_TOKEN_KEY);

@@ -87,7 +87,7 @@ export default function EmployerJobsPage() {
       try {
         const response = await searchJobs<PageListDTO<JobDTO>>({
           pagination: { page: 0, pageSize: DEFAULT_PAGE_SIZE },
-          sortedBy: [{ field: "createdDate", sort: "desc" }],
+          sortedBy: [{ field: "createAt", sort: "desc" }],
           searchedBy: "",
           filter: null,
         }, accessToken);
@@ -110,7 +110,7 @@ export default function EmployerJobsPage() {
         setPostedJobs(rows);
       } catch (error) {
         const apiError = error as ApiError;
-        setErrorMessage(apiError.message || "Khong the tai danh sach tin tuyen dung.");
+        setErrorMessage(apiError.message || "Không thể tải danh sách tin tuyển dụng.");
       } finally {
         setIsLoading(false);
       }
@@ -130,15 +130,15 @@ export default function EmployerJobsPage() {
       body: { status: "CLOSED" },
     }).then(() => {
       toast({
-        title: "Dong tin tuyen dung",
-        description: `Tin "${jobTitle}" da duoc dong.`,
+        title: "Đóng tin tuyển dụng",
+        description: `Tin "${jobTitle}" đã được đóng.`,
       });
     }).catch((error) => {
       const apiError = error as ApiError;
       toast({
         variant: "destructive",
-        title: "Cap nhat that bai",
-        description: apiError.message || "Khong the cap nhat trang thai tin.",
+        title: "Cập nhật thất bại",
+        description: apiError.message || "Không thể cập nhật trạng thái tin.",
       });
     });
   };
@@ -148,14 +148,14 @@ export default function EmployerJobsPage() {
       <Card>
         <CardHeader className="flex flex-row items-center">
           <div className="grid gap-2">
-            <CardTitle>Quan ly tin tuyen dung</CardTitle>
+            <CardTitle>Quản lý tin tuyển dụng</CardTitle>
             <CardDescription>
-              Xem, sua hoac dong cac tin tuyen dung cua ban.
+              Xem, sửa hoặc đóng các tin tuyển dụng của bạn.
             </CardDescription>
           </div>
           <Button asChild size="sm" className="ml-auto gap-1">
             <Link href="/employer/dashboard/post-job">
-              Dang tin moi
+              Đăng tin mới
               <PlusCircle className="h-4 w-4" />
             </Link>
           </Button>
@@ -176,11 +176,11 @@ export default function EmployerJobsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Vi tri</TableHead>
-                    <TableHead className="text-center">Ngay dang</TableHead>
-                    <TableHead className="text-center">Ung vien</TableHead>
-                    <TableHead className="text-center">Trang thai</TableHead>
-                    <TableHead className="text-right">Hanh dong</TableHead>
+                    <TableHead>Vị trí</TableHead>
+                    <TableHead className="text-center">Ngày đăng</TableHead>
+                    <TableHead className="text-center">Ứng viên</TableHead>
+                    <TableHead className="text-center">Trạng thái</TableHead>
+                    <TableHead className="text-right">Hành động</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -204,16 +204,16 @@ export default function EmployerJobsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                            <DropdownMenuItem>Sua</DropdownMenuItem>
+                            <DropdownMenuItem>Sửa</DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link href={`/employer/dashboard/applicants/${job.jobId}`}>Xem ung vien</Link>
+                              <Link href={`/employer/dashboard/applicants/${job.jobId}`}>Xem ứng viên</Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleCloseJob(job.jobId, job.title)}
                               disabled={job.status === 'CLOSED'}
                               className="text-red-500"
                             >
-                              Dong tin
+                              Đóng tin
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -242,10 +242,10 @@ export default function EmployerJobsPage() {
           ) : (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
               <FilePlus className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">Chua co tin tuyen dung nao</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Hay bat dau tao tin tuyen dung dau tien cua ban.</p>
+              <h3 className="mt-4 text-lg font-semibold">Chưa có tin tuyển dụng nào</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Hãy bắt đầu tạo tin tuyển dụng đầu tiên của bạn.</p>
               <Button asChild className="mt-6">
-                <Link href="/employer/dashboard/post-job">Dang tin ngay</Link>
+                <Link href="/employer/dashboard/post-job">Đăng tin ngay</Link>
               </Button>
             </div>
           )}

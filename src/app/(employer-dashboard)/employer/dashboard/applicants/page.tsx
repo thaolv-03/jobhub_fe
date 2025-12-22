@@ -52,7 +52,7 @@ export default function EmployerApplicantsPage() {
       try {
         const response = await searchJobs<PageListDTO<JobDTO>>({
           pagination: { page: 0, pageSize: 10 },
-          sortedBy: [{ field: "createdDate", sort: "desc" }],
+          sortedBy: [{ field: "createAt", sort: "desc" }],
           searchedBy: "",
           filter: null,
         }, accessToken);
@@ -75,7 +75,7 @@ export default function EmployerApplicantsPage() {
         setJobs(rows);
       } catch (error) {
         const apiError = error as ApiError;
-        setErrorMessage(apiError.message || "Khong the tai danh sach tin tuyen dung.");
+        setErrorMessage(apiError.message || "Không thể tải danh sách tin tuyển dụng.");
       } finally {
         setIsLoading(false);
       }
@@ -88,8 +88,8 @@ export default function EmployerApplicantsPage() {
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <Card>
         <CardHeader>
-          <CardTitle>Quan ly ung vien</CardTitle>
-          <CardDescription>Chon tin tuyen dung de xem danh sach ung vien.</CardDescription>
+          <CardTitle>Quản lý ứng viên</CardTitle>
+          <CardDescription>Chọn tin tuyển dụng để xem danh sách ứng viên.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -103,16 +103,16 @@ export default function EmployerApplicantsPage() {
             </div>
           ) : jobs.length === 0 ? (
             <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Chua co tin tuyen dung de hien thi ung vien.
+              Chưa có tin tuyển dụng để hiển thị ứng viên.
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Vi tri</TableHead>
-                  <TableHead className="text-center">Ngay dang</TableHead>
-                  <TableHead className="text-center">Ung vien</TableHead>
-                  <TableHead className="text-right">Hanh dong</TableHead>
+                  <TableHead>Vị trí</TableHead>
+                  <TableHead className="text-center">Ngày đăng</TableHead>
+                  <TableHead className="text-center">Ứng viên</TableHead>
+                  <TableHead className="text-right">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -127,7 +127,7 @@ export default function EmployerApplicantsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button asChild size="sm">
-                        <Link href={`/employer/dashboard/applicants/${job.jobId}`}>Xem ung vien</Link>
+                        <Link href={`/employer/dashboard/applicants/${job.jobId}`}>Xem ứng viên</Link>
                       </Button>
                     </TableCell>
                   </TableRow>

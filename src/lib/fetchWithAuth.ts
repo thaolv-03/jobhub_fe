@@ -12,6 +12,7 @@ type FetchWithAuthOptions = RequestInit & {
   accessToken?: string | null;
   retryOnce?: boolean;
   parseAs?: "api" | "raw";
+  suppressAuthFailure?: boolean;
 };
 
 let isRefreshing = false;
@@ -52,7 +53,7 @@ const refreshAccessToken = async () => {
     method: "POST",
     headers: {
       Accept: "application/json",
-      "Refresh-Token": refreshToken,
+      refresh_token: refreshToken,
     },
     credentials: "include",
   });
@@ -104,6 +105,7 @@ export async function fetchWithAuth<T>(
 
   const isRefreshEndpoint = url.includes("/api/auth/refresh-token");
   const parseAs = options.parseAs ?? "api";
+  const suppressAuthFailure = options.suppressAuthFailure ?? false;
 
   const headers = new Headers(options.headers);
   const storedToken = getAccessToken();
@@ -127,7 +129,11 @@ export async function fetchWithAuth<T>(
     }
   }
 
-  if (shouldRefresh(response, parseAs === "api" ? (data as ApiResponse<T>) : undefined) && !isRefreshEndpoint) {
+  if (
+    !suppressAuthFailure &&
+    shouldRefresh(response, parseAs === "api" ? (data as ApiResponse<T>) : undefined) &&
+    !isRefreshEndpoint
+  ) {
     if (options.retryOnce) {
       handleAuthFailure();
       throw new ApiError(401, "UNAUTHENTICATED", AUTH_FAILURE_MESSAGE);
