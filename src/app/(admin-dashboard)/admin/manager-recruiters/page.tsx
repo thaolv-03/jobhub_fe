@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AdminTableFooter } from "@/components/admin/admin-table-footer";
+import { getAccessToken } from "@/lib/auth-storage";
 import { fetchRecruiterDocuments, RecruiterDocument, updateRecruiterStatus } from "@/lib/admin-recruiter";
-import { AccountStatus, RecruiterAdminDetail, fetchRecruiters, updateAccountStatus } from "@/lib/admin-users";
+import {
+  AccountStatus,
+  RecruiterAdminDetail,
+  RecruiterStatus,
+  searchRecruiters,
+  updateRecruiterAccountStatus,
+} from "@/lib/admin-users";
 
 const PAGE_SIZE = 8;
-
-const normalize = (value: string | null | undefined) => (value ?? "").toLowerCase();
 
 const getAccountStatusLabel = (status: AccountStatus) => {
   switch (status) {
@@ -31,6 +36,19 @@ const getAccountStatusLabel = (status: AccountStatus) => {
   }
 };
 
+const getAccountStatusBadgeClass = (status: AccountStatus) => {
+  switch (status) {
+    case "ACTIVE":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "LOCKED":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    case "INACTIVE":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    default:
+      return "";
+  }
+};
+
 const getRecruiterStatusLabel = (status: RecruiterAdminDetail["status"]) => {
   switch (status) {
     case "APPROVED":
@@ -42,21 +60,32 @@ const getRecruiterStatusLabel = (status: RecruiterAdminDetail["status"]) => {
   }
 };
 
+const getRecruiterStatusBadgeClass = (status: RecruiterAdminDetail["status"]) => {
+  switch (status) {
+    case "APPROVED":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "REJECTED":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    default:
+      return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+};
+
 const nextAccountStatus = (status: AccountStatus) => {
   return status === "LOCKED" ? "ACTIVE" : "LOCKED";
 };
 
 export default function ManageRecruitersPage() {
-  const { accessToken } = useAuth();
   const { toast } = useToast();
-
-  const [isLoading, setIsLoading] = React.useState(true);
   const [recruiters, setRecruiters] = React.useState<RecruiterAdminDetail[]>([]);
-  const [accountStatusFilter, setAccountStatusFilter] = React.useState<"all" | AccountStatus>("all");
-  const [statusFilter, setStatusFilter] = React.useState<"all" | RecruiterAdminDetail["status"]>("all");
+  const [totalCount, setTotalCount] = React.useState(0);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
+  const [accountStatusFilter, setAccountStatusFilter] = React.useState<"all" | AccountStatus>("all");
+  const [statusFilter, setStatusFilter] = React.useState<"all" | RecruiterStatus>("all");
   const [page, setPage] = React.useState(1);
-  const [updatingAccountId, setUpdatingAccountId] = React.useState<string | null>(null);
+  const [updatingAccountId, setUpdatingAccountId] = React.useState<number | null>(null);
   const [updatingRecruiterId, setUpdatingRecruiterId] = React.useState<number | null>(null);
   const [isDocsOpen, setIsDocsOpen] = React.useState(false);
   const [docsLoading, setDocsLoading] = React.useState(false);
@@ -64,11 +93,19 @@ export default function ManageRecruitersPage() {
   const [documents, setDocuments] = React.useState<RecruiterDocument[]>([]);
 
   const loadRecruiters = React.useCallback(async () => {
-    if (!accessToken) return;
+    if (!getAccessToken()) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const data = await fetchRecruiters(accessToken);
-      setRecruiters(data);
+      const data = await searchRecruiters({
+        page: Math.max(0, page - 1),
+        pageSize: PAGE_SIZE,
+        searchedBy: debouncedSearch,
+      });
+      setRecruiters(data.items);
+      setTotalCount(data.count);
     } catch (error) {
       toast({
         title: "Failed to load recruiters",
@@ -78,35 +115,25 @@ export default function ManageRecruitersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, toast]);
+  }, [debouncedSearch, page, toast]);
 
   React.useEffect(() => {
     void loadRecruiters();
   }, [loadRecruiters]);
 
-  const filteredRecruiters = React.useMemo(() => {
-    const searchValue = normalize(search.trim());
-    return recruiters.filter((item) => {
-      const matchesSearch =
-        !searchValue ||
-        normalize(item.accountEmail).includes(searchValue) ||
-        normalize(item.companyName).includes(searchValue) ||
-        normalize(item.phone).includes(searchValue) ||
-        normalize(item.position).includes(searchValue) ||
-        normalize(String(item.recruiterId)).includes(searchValue);
-      const matchesAccountStatus = accountStatusFilter === "all" || item.accountStatus === accountStatusFilter;
-      const matchesRecruiterStatus = statusFilter === "all" || item.status === statusFilter;
-      return matchesSearch && matchesAccountStatus && matchesRecruiterStatus;
+  const visibleRecruiters = React.useMemo(() => {
+    return recruiters.filter((recruiter) => {
+      const matchesStatus = statusFilter === "all" || recruiter.status === statusFilter;
+      const matchesAccount = accountStatusFilter === "all" || recruiter.accountStatus === accountStatusFilter;
+      return matchesStatus && matchesAccount;
     });
-  }, [recruiters, search, accountStatusFilter, statusFilter]);
+  }, [recruiters, statusFilter, accountStatusFilter]);
 
-  const pagedRecruiters = filteredRecruiters.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const handleToggleAccountStatus = async (accountId: string, status: AccountStatus) => {
-    if (!accessToken) return;
+  const handleToggleAccountStatus = async (recruiterId: number, status: AccountStatus) => {
+    if (!getAccessToken()) return;
     try {
-      setUpdatingAccountId(accountId);
-      await updateAccountStatus(accessToken, accountId, nextAccountStatus(status));
+      setUpdatingAccountId(recruiterId);
+      await updateRecruiterAccountStatus(recruiterId, nextAccountStatus(status));
       await loadRecruiters();
     } catch (error) {
       toast({
@@ -119,14 +146,11 @@ export default function ManageRecruitersPage() {
     }
   };
 
-  const handleRecruiterStatusUpdate = async (
-    recruiterId: number,
-    status: RecruiterAdminDetail["status"]
-  ) => {
-    if (!accessToken) return;
+  const handleRecruiterStatusUpdate = async (recruiterId: number, status: RecruiterAdminDetail["status"]) => {
+    if (!getAccessToken()) return;
     try {
       setUpdatingRecruiterId(recruiterId);
-      await updateRecruiterStatus(accessToken, recruiterId, status);
+      await updateRecruiterStatus(recruiterId, status);
       await loadRecruiters();
       toast({ title: "Recruiter status updated" });
     } catch (error) {
@@ -141,11 +165,11 @@ export default function ManageRecruitersPage() {
   };
 
   const handleViewDocuments = async (recruiter: RecruiterAdminDetail) => {
-    if (!accessToken) return;
+    if (!getAccessToken()) return;
     setSelectedRecruiter(recruiter);
     setDocsLoading(true);
     try {
-      const docs = await fetchRecruiterDocuments(accessToken, recruiter.recruiterId);
+      const docs = await fetchRecruiterDocuments(recruiter.recruiterId);
       setDocuments(docs);
       setIsDocsOpen(true);
     } catch (error) {
@@ -160,20 +184,7 @@ export default function ManageRecruitersPage() {
   };
 
   const accountStatusOptions: ("all" | AccountStatus)[] = ["all", "ACTIVE", "INACTIVE", "LOCKED"];
-  const recruiterStatusOptions: ("all" | RecruiterAdminDetail["status"])[] = [
-    "all",
-    "PENDING",
-    "APPROVED",
-    "REJECTED",
-  ];
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-        Loading recruiters...
-      </div>
-    );
-  }
+  const recruiterStatusOptions: ("all" | RecruiterStatus)[] = ["all", "PENDING", "APPROVED", "REJECTED"];
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -196,11 +207,11 @@ export default function ManageRecruitersPage() {
             <Select
               value={statusFilter}
               onValueChange={(value) => {
-                setStatusFilter(value as "all" | RecruiterAdminDetail["status"]);
+                setStatusFilter(value as "all" | RecruiterStatus);
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-44">
                 <SelectValue placeholder="Recruiter status" />
               </SelectTrigger>
               <SelectContent>
@@ -247,22 +258,30 @@ export default function ManageRecruitersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pagedRecruiters.length === 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-6 text-center text-sm text-muted-foreground">
+                    Loading recruiters...
+                  </TableCell>
+                </TableRow>
+              ) : visibleRecruiters.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
                     No recruiters found.
                   </TableCell>
                 </TableRow>
               ) : (
-                pagedRecruiters.map((recruiter) => (
+                visibleRecruiters.map((recruiter) => (
                   <TableRow key={recruiter.recruiterId}>
                     <TableCell>{recruiter.recruiterId}</TableCell>
-                    <TableCell>{recruiter.accountEmail}</TableCell>
+                    <TableCell>{recruiter.email}</TableCell>
                     <TableCell>{recruiter.companyName ?? "-"}</TableCell>
                     <TableCell>{recruiter.phone ?? "-"}</TableCell>
                     <TableCell>{recruiter.position ?? "-"}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{getRecruiterStatusLabel(recruiter.status)}</Badge>
+                      <Badge variant="outline" className={getRecruiterStatusBadgeClass(recruiter.status)}>
+                        {getRecruiterStatusLabel(recruiter.status)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Button
@@ -275,31 +294,40 @@ export default function ManageRecruitersPage() {
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{getAccountStatusLabel(recruiter.accountStatus)}</Badge>
+                      <Badge variant="outline" className={getAccountStatusBadgeClass(recruiter.accountStatus)}>
+                        {getAccountStatusLabel(recruiter.accountStatus)}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex flex-wrap justify-end gap-2">
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={updatingRecruiterId === recruiter.recruiterId}
+                          disabled={recruiter.status === "APPROVED" || updatingRecruiterId === recruiter.recruiterId}
                           onClick={() => handleRecruiterStatusUpdate(recruiter.recruiterId, "APPROVED")}
+                          className="hover:bg-emerald-600 hover:text-white"
                         >
                           Approve
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={updatingRecruiterId === recruiter.recruiterId}
+                          disabled={recruiter.status === "APPROVED" || updatingRecruiterId === recruiter.recruiterId}
                           onClick={() => handleRecruiterStatusUpdate(recruiter.recruiterId, "REJECTED")}
+                          className="hover:bg-rose-600 hover:text-white"
                         >
                           Reject
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={updatingAccountId === recruiter.accountId}
-                          onClick={() => handleToggleAccountStatus(recruiter.accountId, recruiter.accountStatus)}
+                          disabled={updatingAccountId === recruiter.recruiterId}
+                          onClick={() => handleToggleAccountStatus(recruiter.recruiterId, recruiter.accountStatus)}
+                          className={
+                            recruiter.accountStatus === "LOCKED"
+                              ? "hover:bg-emerald-600 hover:text-white"
+                              : "hover:bg-amber-500 hover:text-white"
+                          }
                         >
                           {recruiter.accountStatus === "LOCKED" ? "Unlock" : "Lock"}
                         </Button>
@@ -311,7 +339,7 @@ export default function ManageRecruitersPage() {
             </TableBody>
           </Table>
           <AdminTableFooter
-            totalCount={filteredRecruiters.length}
+            totalCount={totalCount}
             totalLabel="recruiters"
             page={page}
             pageSize={PAGE_SIZE}
@@ -322,7 +350,7 @@ export default function ManageRecruitersPage() {
       </Card>
 
       <Dialog open={isDocsOpen} onOpenChange={setIsDocsOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[min(32rem,calc(100vw-2rem))] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Recruiter documents</DialogTitle>
             <DialogDescription>
@@ -338,13 +366,13 @@ export default function ManageRecruitersPage() {
               </div>
             ) : (
               documents.map((doc) => (
-                <div key={doc.documentId} className="rounded-lg border bg-background p-3">
-                  <div className="flex items-center justify-between gap-3">
+                <div key={doc.documentId} className="w-full rounded-lg border bg-background p-4 overflow-hidden">
+                  <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{doc.fileName}</p>
                       <p className="text-xs text-muted-foreground">{doc.contentType}</p>
                     </div>
-                    <Button asChild variant="outline" size="sm">
+                    <Button asChild variant="outline" size="sm" className="shrink-0 justify-self-end">
                       <a href={doc.downloadUrl} target="_blank" rel="noreferrer">
                         Open
                       </a>

@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AdminTableFooter } from "@/components/admin/admin-table-footer";
-import { AccountStatus, JobSeekerAdmin, fetchJobSeekers, updateAccountStatus } from "@/lib/admin-users";
+import { getAccessToken } from "@/lib/auth-storage";
+import {
+  AccountStatus,
+  JobSeekerAdmin,
+  searchJobSeekers,
+  updateJobSeekerAccountStatus,
+} from "@/lib/admin-users";
 
 const PAGE_SIZE = 8;
-
-const normalize = (value: string | null | undefined) => (value ?? "").toLowerCase();
 
 const getAccountStatusLabel = (status: AccountStatus) => {
   switch (status) {
@@ -30,29 +34,50 @@ const getAccountStatusLabel = (status: AccountStatus) => {
   }
 };
 
+const getAccountStatusBadgeClass = (status: AccountStatus) => {
+  switch (status) {
+    case "ACTIVE":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "LOCKED":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    case "INACTIVE":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    default:
+      return "";
+  }
+};
+
 const nextAccountStatus = (status: AccountStatus) => {
   return status === "LOCKED" ? "ACTIVE" : "LOCKED";
 };
 
 export default function ManageJobSeekersPage() {
-  const { accessToken } = useAuth();
   const { toast } = useToast();
-
-  const [isLoading, setIsLoading] = React.useState(true);
   const [jobSeekers, setJobSeekers] = React.useState<JobSeekerAdmin[]>([]);
-  const [accountStatusFilter, setAccountStatusFilter] = React.useState<"all" | AccountStatus>("all");
+  const [totalCount, setTotalCount] = React.useState(0);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
+  const [accountStatusFilter, setAccountStatusFilter] = React.useState<"all" | AccountStatus>("all");
   const [page, setPage] = React.useState(1);
-  const [updatingAccountId, setUpdatingAccountId] = React.useState<string | null>(null);
+  const [updatingJobSeekerId, setUpdatingJobSeekerId] = React.useState<number | null>(null);
   const [isCvOpen, setIsCvOpen] = React.useState(false);
   const [selectedCvUrl, setSelectedCvUrl] = React.useState<string | null>(null);
 
   const loadJobSeekers = React.useCallback(async () => {
-    if (!accessToken) return;
+    if (!getAccessToken()) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const data = await fetchJobSeekers(accessToken);
-      setJobSeekers(data);
+      const data = await searchJobSeekers({
+        page: Math.max(0, page - 1),
+        pageSize: PAGE_SIZE,
+        searchedBy: debouncedSearch,
+      });
+      setJobSeekers(data.items);
+      setTotalCount(data.count);
     } catch (error) {
       toast({
         title: "Failed to load job seekers",
@@ -62,34 +87,22 @@ export default function ManageJobSeekersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, toast]);
+  }, [debouncedSearch, page, toast]);
 
   React.useEffect(() => {
     void loadJobSeekers();
   }, [loadJobSeekers]);
 
-  const filteredJobSeekers = React.useMemo(() => {
-    const searchValue = normalize(search.trim());
-    return jobSeekers.filter((item) => {
-      const matchesSearch =
-        !searchValue ||
-        normalize(item.fullName).includes(searchValue) ||
-        normalize(item.accountEmail).includes(searchValue) ||
-        normalize(item.phone).includes(searchValue) ||
-        normalize(item.address).includes(searchValue) ||
-        normalize(String(item.jobSeekerId)).includes(searchValue);
-      const matchesStatus = accountStatusFilter === "all" || item.accountStatus === accountStatusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [jobSeekers, search, accountStatusFilter]);
+  const visibleJobSeekers = React.useMemo(() => {
+    if (accountStatusFilter === "all") return jobSeekers;
+    return jobSeekers.filter((jobSeeker) => jobSeeker.accountStatus === accountStatusFilter);
+  }, [jobSeekers, accountStatusFilter]);
 
-  const pagedJobSeekers = filteredJobSeekers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const handleToggleAccountStatus = async (accountId: string, status: AccountStatus) => {
-    if (!accessToken) return;
+  const handleToggleAccountStatus = async (jobSeekerId: number, status: AccountStatus) => {
+    if (!getAccessToken()) return;
     try {
-      setUpdatingAccountId(accountId);
-      await updateAccountStatus(accessToken, accountId, nextAccountStatus(status));
+      setUpdatingJobSeekerId(jobSeekerId);
+      await updateJobSeekerAccountStatus(jobSeekerId, nextAccountStatus(status));
       await loadJobSeekers();
     } catch (error) {
       toast({
@@ -98,7 +111,7 @@ export default function ManageJobSeekersPage() {
         variant: "destructive",
       });
     } finally {
-      setUpdatingAccountId(null);
+      setUpdatingJobSeekerId(null);
     }
   };
 
@@ -109,14 +122,6 @@ export default function ManageJobSeekersPage() {
   };
 
   const accountStatusOptions: ("all" | AccountStatus)[] = ["all", "ACTIVE", "INACTIVE", "LOCKED"];
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-        Loading job seekers...
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -174,25 +179,33 @@ export default function ManageJobSeekersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pagedJobSeekers.length === 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={11} className="py-6 text-center text-sm text-muted-foreground">
+                    Loading job seekers...
+                  </TableCell>
+                </TableRow>
+              ) : visibleJobSeekers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={11} className="text-center text-sm text-muted-foreground">
                     No job seekers found.
                   </TableCell>
                 </TableRow>
               ) : (
-                pagedJobSeekers.map((jobSeeker) => (
+                visibleJobSeekers.map((jobSeeker) => (
                   <TableRow key={jobSeeker.jobSeekerId}>
                     <TableCell>{jobSeeker.jobSeekerId}</TableCell>
                     <TableCell>{jobSeeker.fullName}</TableCell>
-                    <TableCell>{jobSeeker.accountEmail}</TableCell>
+                    <TableCell>{jobSeeker.email}</TableCell>
                     <TableCell>{jobSeeker.dob ?? "-"}</TableCell>
                     <TableCell>{jobSeeker.phone ?? "-"}</TableCell>
                     <TableCell>{jobSeeker.address ?? "-"}</TableCell>
                     <TableCell>{jobSeeker.createdAt ?? "-"}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{jobSeeker.bio ?? "-"}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{getAccountStatusLabel(jobSeeker.accountStatus)}</Badge>
+                      <Badge variant="outline" className={getAccountStatusBadgeClass(jobSeeker.accountStatus)}>
+                        {getAccountStatusLabel(jobSeeker.accountStatus)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Button
@@ -208,8 +221,13 @@ export default function ManageJobSeekersPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={updatingAccountId === jobSeeker.accountId}
-                        onClick={() => handleToggleAccountStatus(jobSeeker.accountId, jobSeeker.accountStatus)}
+                        disabled={updatingJobSeekerId === jobSeeker.jobSeekerId}
+                        onClick={() => handleToggleAccountStatus(jobSeeker.jobSeekerId, jobSeeker.accountStatus)}
+                        className={
+                          jobSeeker.accountStatus === "LOCKED"
+                            ? "hover:bg-emerald-600 hover:text-white"
+                            : "hover:bg-amber-500 hover:text-white"
+                        }
                       >
                         {jobSeeker.accountStatus === "LOCKED" ? "Unlock" : "Lock"}
                       </Button>
@@ -220,7 +238,7 @@ export default function ManageJobSeekersPage() {
             </TableBody>
           </Table>
           <AdminTableFooter
-            totalCount={filteredJobSeekers.length}
+            totalCount={totalCount}
             totalLabel="job seekers"
             page={page}
             pageSize={PAGE_SIZE}

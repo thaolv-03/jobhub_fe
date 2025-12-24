@@ -5,7 +5,7 @@ export type RecruiterStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type RecruiterAdmin = {
   recruiterId: number;
   status: RecruiterStatus;
-  accountEmail?: string | null;
+  email?: string | null;
   companyId?: number | null;
   companyName?: string | null;
 };

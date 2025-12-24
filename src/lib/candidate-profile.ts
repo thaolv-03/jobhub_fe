@@ -38,15 +38,10 @@ const isNotFound = (error: unknown) =>
 
 export async function fetchCandidateProfile(): Promise<CandidateProfile | null> {
   try {
-    const response = await apiRequest<CandidateProfile>(PROFILE_ME_ENDPOINT, {
-      suppressAuthFailure: true,
-    });
+    const response = await apiRequest<CandidateProfile>(PROFILE_ME_ENDPOINT);
     return response.data ?? null;
   } catch (error) {
     if (isNotFound(error)) {
-      return null;
-    }
-    if (error instanceof ApiError && error.code === 401) {
       return null;
     }
     throw error;

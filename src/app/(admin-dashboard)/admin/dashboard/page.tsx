@@ -287,7 +287,7 @@ export default function AdminDashboardPage() {
                       <TableCell className="font-medium">#{recruiter.recruiterId}</TableCell>
                       <TableCell>{recruiter.companyName ?? "Pending profile"}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {recruiter.accountEmail ?? "Unknown"}
+                        {recruiter.email ?? "Unknown"}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{recruiter.status}</Badge>

@@ -1,4 +1,4 @@
-﻿'use client';
+"use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +40,7 @@ const recommendedJobs = [
 
 export default function CandidateDashboardPage() {
   const { toast } = useToast();
-  const { account, roles } = useAuth();
+  const { account } = useAuth();
   const [avatar, setAvatar] = React.useState("https://i.pravatar.cc/150?u=a042581f4e29026704d");
   const [uploadedCvs, setUploadedCvs] = React.useState<string[]>([]);
   const [cvUrl, setCvUrl] = React.useState<string | null>(null);
@@ -63,8 +63,6 @@ export default function CandidateDashboardPage() {
     let mounted = true;
 
     const loadProfile = async () => {
-      if (!roles.includes("JOB_SEEKER")) return;
-
       try {
         const profile = await fetchCandidateProfile();
         if (!mounted) return;
@@ -94,13 +92,14 @@ export default function CandidateDashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [account?.email, form, roles, toast]);
+  }, [account?.email, form, toast]);
 
-  const skillsArray = form
-    .watch("skills")
-    ?.split(",")
-    .map((s) => s.trim())
-    .filter(Boolean) || [];
+  const skillsArray =
+    form
+      .watch("skills")
+      ?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) || [];
 
   const handleProfileSubmit = (values: ProfileFormValues) => {
     console.log("Updating profile with:", values);
@@ -124,15 +123,6 @@ export default function CandidateDashboardPage() {
   const handleCvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    if (!roles.includes("JOB_SEEKER")) {
-      toast({
-        title: "Chưa có hồ sơ",
-        description: "Vui lòng tạo hồ sơ người tìm việc trước khi tải CV.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     if (file.type !== "application/pdf") {
       toast({ title: "Lỗi", description: "Vui lòng chỉ tải lên file PDF.", variant: "destructive" });

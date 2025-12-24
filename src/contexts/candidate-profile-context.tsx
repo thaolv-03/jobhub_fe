@@ -139,17 +139,29 @@ export function CandidateProfileGateProvider({ children }: { children: React.Rea
         return { hasProfile: false };
       }
 
-      if (!roles.includes("JOB_SEEKER")) {
-        setIntent(nextIntent);
-        setIsCreateOpen(true);
-        return new Promise((resolve) => {
-          pendingResolveRef.current = resolve;
-        });
-      }
-
       try {
         const currentProfile = await loadProfileOnce();
         if (currentProfile) {
+          if (!roles.includes("JOB_SEEKER")) {
+            updateAccount((current) => {
+              if (!current || typeof current !== "object") return current;
+              const next = { ...(current as any) };
+              const nextRoles = Array.isArray(next.roles) ? [...next.roles] : [];
+              const hasJobSeeker = nextRoles.some((role: any) => role?.roleName === "JOB_SEEKER");
+              if (!hasJobSeeker) {
+                nextRoles.push({
+                  roleId: -1,
+                  roleName: "JOB_SEEKER",
+                  roleDescription: "Job seeker (client fallback)",
+                  permissions: [],
+                });
+              }
+              next.roles = nextRoles;
+              return next;
+            });
+            reload();
+          }
+
           if (nextIntent.type === "APPLY_JOB") {
             openApplyDialog(nextIntent);
           } else {
@@ -173,7 +185,7 @@ export function CandidateProfileGateProvider({ children }: { children: React.Rea
         pendingResolveRef.current = resolve;
       });
     },
-    [isAuthenticated, loadProfileOnce, openApplyDialog, roles, router, toast]
+    [isAuthenticated, loadProfileOnce, openApplyDialog, reload, roles, router, toast]
   );
 
   const handleCreateClose = useCallback(
