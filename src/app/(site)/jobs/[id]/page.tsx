@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Container } from "@/components/layout/container";
-import { useCandidateProfileGate } from "@/contexts/candidate-profile-context";
+import { useJobSeekerProfileGate } from "@/contexts/job-seeker-profile-context";
 import { useAuth } from "@/hooks/use-auth";
 
 const allJobs = [
@@ -61,7 +61,7 @@ export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const { ensureProfile } = useCandidateProfileGate();
+  const { ensureProfile } = useJobSeekerProfileGate();
   const jobId = Array.isArray(params.id) ? params.id[0] : params.id;
   const jobData = allJobs.find((job) => job.id === jobId);
   const bannerImage = PlaceHolderImages.find((p) => p.id === "job-detail-banner");
@@ -172,3 +172,4 @@ export default function JobDetailPage() {
     </div>
   );
 }
+

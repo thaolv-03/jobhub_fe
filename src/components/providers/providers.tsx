@@ -2,16 +2,16 @@
 'use client';
 
 import { AuthProvider } from '@/contexts/auth-context';
-import { CandidateProfileGateProvider } from '@/contexts/candidate-profile-context';
+import { JobSeekerProfileGateProvider } from '@/contexts/job-seeker-profile-context';
 import { ThemeProvider } from './theme-provider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <CandidateProfileGateProvider>
+        <JobSeekerProfileGateProvider>
           {children}
-        </CandidateProfileGateProvider>
+        </JobSeekerProfileGateProvider>
       </AuthProvider>
     </ThemeProvider>
   );

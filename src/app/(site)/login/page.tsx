@@ -38,8 +38,8 @@ export default function LoginPage() {
     const getRedirectPath = (account: Account): string => {
         const roles = account.roles.map(r => r.roleName);
         if (roles.includes('ADMIN')) return '/admin/dashboard';
-        if (roles.includes('RECRUITER')) return '/employer/dashboard';
-        if (roles.includes('JOB_SEEKER')) return '/candidate/dashboard';
+        if (roles.includes('RECRUITER')) return '/recruiter/dashboard';
+        if (roles.includes('JOB_SEEKER')) return '/job-seeker/dashboard';
         return '/';
     }
 
@@ -128,3 +128,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

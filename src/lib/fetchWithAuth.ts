@@ -1,4 +1,5 @@
-﻿import { ApiError, ApiResponse, buildApiErrorMessage } from "./api-types";
+﻿import { ApiError, buildApiErrorMessage } from "./api-types";
+import type { ApiResponse } from "./api-types";
 import {
   clearAuthData,
   getAccessToken,
@@ -171,3 +172,4 @@ export async function fetchWithAuth<T>(
 
   return apiData;
 }
+

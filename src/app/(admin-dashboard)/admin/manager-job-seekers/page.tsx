@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -251,11 +251,11 @@ export default function ManageJobSeekersPage() {
       <Dialog open={isCvOpen} onOpenChange={setIsCvOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Candidate CV</DialogTitle>
+            <DialogTitle>Job Seeker CV</DialogTitle>
             <DialogDescription>Review the uploaded CV.</DialogDescription>
           </DialogHeader>
           {selectedCvUrl ? (
-            <iframe title="Candidate CV" src={selectedCvUrl} className="h-[70vh] w-full rounded-md border" />
+            <iframe title="Job Seeker CV" src={selectedCvUrl} className="h-[70vh] w-full rounded-md border" />
           ) : (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
               No CV selected.
@@ -266,3 +266,4 @@ export default function ManageJobSeekersPage() {
     </div>
   );
 }
+

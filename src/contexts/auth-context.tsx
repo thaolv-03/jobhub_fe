@@ -1,4 +1,4 @@
-
+﻿
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setAccount(null);
         setAccessToken(null);
         // Redirect to a public page after logout
-        if(pathname.startsWith('/candidate') || pathname.startsWith('/employer')) {
+        if(pathname.startsWith('/job-seeker') || pathname.startsWith('/recruiter')) {
             router.push('/');
         }
     }
@@ -109,3 +109,4 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     </AuthContext.Provider>
   );
 };
+

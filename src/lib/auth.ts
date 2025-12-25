@@ -1,7 +1,8 @@
 
 'use client';
 import { apiRequest } from './api-client';
-import { ApiError, ApiResponse } from './api-types';
+import { ApiError } from './api-types';
+import type { ApiResponse } from './api-types';
 import {
   ACCOUNT_KEY,
   clearAuthData,

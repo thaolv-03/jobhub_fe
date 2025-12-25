@@ -1,4 +1,4 @@
-import { ApiResponse } from "./api-types";
+import type { ApiResponse } from "./api-types";
 import { fetchWithAuth } from "./fetchWithAuth";
 
 async function proxyRequest<T>(path: string, body: unknown, accessToken?: string | null): Promise<ApiResponse<T>> {

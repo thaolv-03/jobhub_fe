@@ -1,4 +1,4 @@
-
+﻿
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -22,9 +22,12 @@ export function middleware(request: NextRequest) {
 // Config to specify which routes should be protected by this middleware.
 export const config = {
     matcher: [
-        '/candidate/dashboard/:path*',
-        '/employer/dashboard/:path*',
+        '/job-seeker/dashboard/:path*',
+        '/recruiter/dashboard/:path*',
         // Add /admin/:path* if you have admin routes in the future
         // '/admin/:path*',
     ],
 };
+
+
+

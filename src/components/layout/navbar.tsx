@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { MouseEvent } from "react";
 import Link from "next/link";
@@ -11,12 +11,12 @@ import { useRouter } from "next/navigation";
 import { Skeleton } from "../ui/skeleton";
 import { LogOut, LayoutDashboard, Settings, Briefcase } from "lucide-react";
 import { Container } from "@/components/layout/container";
-import { useCandidateProfileGate } from "@/contexts/candidate-profile-context";
+import { useJobSeekerProfileGate } from "@/contexts/job-seeker-profile-context";
 
 export function Navbar() {
   const { account, isAuthenticated, isLoading, logout, roles } = useAuth();
   const router = useRouter();
-  const { ensureProfile } = useCandidateProfileGate();
+  const { ensureProfile } = useJobSeekerProfileGate();
 
   const handleLogout = async () => {
     await logout();
@@ -32,27 +32,27 @@ export function Navbar() {
         return '/admin/dashboard';
       }
       if (userRoles.includes('RECRUITER') || userRoles.includes('RECRUITER_PENDING')) {
-        return '/employer/dashboard';
+        return '/recruiter/dashboard';
       }
       if (userRoles.includes('JOB_SEEKER')) {
-        return '/candidate/dashboard';
+        return '/job-seeker/dashboard';
       }
       return '/login';
   }
 
-  const handleEmployerRedirect = () => {
+  const handleRecruiterRedirect = () => {
     if (!isAuthenticated) {
-        router.push('/login?next=/employer/dashboard');
+        router.push('/login?next=/recruiter/dashboard');
         return;
     }
-    // Always redirect to the employer dashboard. The layout will handle role-based redirection.
-    router.push('/employer/dashboard');
+    // Always redirect to the recruiter dashboard. The layout will handle role-based redirection.
+    router.push('/recruiter/dashboard');
   };
 
-  const handleCandidateProfileClick = async (event: MouseEvent<HTMLAnchorElement>) => {
+  const handleJobSeekerProfileClick = async (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     if (!isAuthenticated) {
-      router.push("/login?next=/candidate/dashboard/cv");
+      router.push("/login?next=/job-seeker/dashboard/cv");
       return;
     }
     await ensureProfile({ type: "OPEN_PROFILE" });
@@ -72,7 +72,7 @@ export function Navbar() {
     if (isAuthenticated && account) {
       return (
         <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={handleEmployerRedirect}>
+            <Button variant="outline" onClick={handleRecruiterRedirect}>
                 Đăng tuyển & Tìm hồ sơ
             </Button>
             <DropdownMenu>
@@ -128,7 +128,7 @@ export function Navbar() {
                 <Link href="/register">Đăng ký</Link>
             </Button>
             <div className="h-6 border-l mx-2"></div>
-            <Button variant="outline" onClick={handleEmployerRedirect}>
+            <Button variant="outline" onClick={handleRecruiterRedirect}>
                 Nhà tuyển dụng
             </Button>
         </div>
@@ -151,9 +151,9 @@ export function Navbar() {
               Tìm việc làm
             </Link>
             <Link
-              href="/candidate/dashboard"
+              href="/job-seeker/dashboard"
               className="text-muted-foreground transition-colors hover:text-primary"
-              onClick={handleCandidateProfileClick}
+              onClick={handleJobSeekerProfileClick}
               >
               Hồ sơ & CV
             </Link>
@@ -167,3 +167,5 @@ export function Navbar() {
     </header>
   );
 }
+
+

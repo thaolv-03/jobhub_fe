@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import Link from "next/link";
@@ -27,19 +27,19 @@ const banners: BannerItem[] = [
   {
     id: "banner-2",
     title: "Hệ thống AI gợi ý CV",
-    href: "/employer",
+    href: "/recruiter",
     backgroundClass: "bg-gradient-to-br from-emerald-600/20 via-slate-900/20 to-transparent",
   },
   {
     id: "banner-3",
     title: "Cập nhật hồ sơ nhanh",
-    href: "/candidate/dashboard",
+    href: "/job-seeker/dashboard",
     backgroundClass: "bg-gradient-to-br from-emerald-400/20 via-emerald-100/50 to-transparent",
   },
   {
     id: "banner-4",
     title: "Đăng tin tuyển dụng",
-    href: "/employer",
+    href: "/recruiter",
     backgroundClass: "bg-gradient-to-br from-emerald-700/20 via-emerald-200/40 to-transparent",
   },
 ];
@@ -131,3 +131,5 @@ export function BannerSlider() {
     </section>
   );
 }
+
+

@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -74,7 +74,7 @@
     --sidebar-ring: 150 70% 45%;
   }
 
-  .theme-employer {
+  .theme-recruiter {
     --background: 210 20% 98%;
     --foreground: 215 28% 17%;
     --card: 210 40% 98%;
@@ -97,7 +97,7 @@
     --ring: 150 77% 40%;
   }
 
-  .dark.theme-employer {
+  .dark.theme-recruiter {
     --background: 215 44% 11%;
     --foreground: 210 17% 98%;
     --card: 215 28% 17%;
@@ -137,3 +137,4 @@
     @apply mx-auto w-full max-w-[1280px] px-4 sm:px-6 lg:px-8;
   }
 }
+

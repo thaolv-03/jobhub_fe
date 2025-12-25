@@ -1,5 +1,6 @@
 
-import { ApiError, ApiResponse } from "./api-types";
+import { ApiError } from "./api-types";
+import type { ApiResponse } from "./api-types";
 import { fetchWithAuth } from "./fetchWithAuth";
 
 
@@ -54,4 +55,5 @@ export async function apiRequest<T>(
     }
 }
 
-export { ApiError, ApiResponse };
+export { ApiError };
+export type { ApiResponse };
