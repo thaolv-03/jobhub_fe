@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,7 @@ import {
 } from "@/lib/job-seeker-profile";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api-types";
-import { searchJobs } from "@/lib/jobs";
+import { recommendJobs, searchJobs, type Job } from "@/lib/jobs";
 import { updateAccount } from "@/lib/auth-storage";
 import { createJobSeekerSkill, deleteJobSeekerSkill, listJobSeekerSkills, type JobSeekerSkill } from "@/lib/job-seeker-skills";
 
@@ -50,7 +50,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 const MAX_AVATAR_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png"];
 
-const recommendedJobs = [
+const fallbackRecommendedJobs = [
   { id: 4, title: "Product Manager", company: "MoMo", location: "TP. Hồ Chí Minh", salary: "Cạnh tranh", logoId: "company-logo-momo" },
   { id: 5, title: "Kỹ sư DevOps", company: "Tiki", location: "Hà Nội", salary: "Trên $2000", logoId: "company-logo-tiki" },
 ];
@@ -144,6 +144,8 @@ export default function JobSeekerDashboardPage() {
   const [initialSkills, setInitialSkills] = React.useState<JobSeekerSkill[]>([]);
   const [selectedSkill, setSelectedSkill] = React.useState("");
   const [customSkill, setCustomSkill] = React.useState("");
+  const [recommendedJobs, setRecommendedJobs] = React.useState<Job[]>([]);
+  const [isRecommendedLoading, setIsRecommendedLoading] = React.useState(false);
   const [cvOnlineFileName, setCvOnlineFileName] = React.useState<string | null>(null);
   const [cvOnlineMeta, setCvOnlineMeta] = React.useState<{ fileKey: string; rawText: string; parsedData: Record<string, unknown> } | null>(null);
   const [isCvParsing, setIsCvParsing] = React.useState(false);
@@ -243,6 +245,30 @@ export default function JobSeekerDashboardPage() {
       }
     };
     void loadSkillOptions();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const loadRecommendations = async () => {
+      try {
+        setIsRecommendedLoading(true);
+        const data = await recommendJobs({
+          pagination: { page: 0, pageSize: 4 },
+          sortedBy: [{ field: "createAt", sort: "DESC" }],
+        });
+        if (!mounted) return;
+        setRecommendedJobs(data.items);
+      } catch {
+        if (!mounted) return;
+        setRecommendedJobs([]);
+      } finally {
+        if (mounted) setIsRecommendedLoading(false);
+      }
+    };
+    void loadRecommendations();
     return () => {
       mounted = false;
     };
@@ -548,6 +574,22 @@ export default function JobSeekerDashboardPage() {
     cvOnlineForm.reset(cvOnlineMeta ? buildCvOnlineDefaults(cvOnlineMeta.parsedData) : buildCvOnlineDefaults(null));
   };
 
+  const recommendedItems: { id: number; title: string; company: string; logoUrl?: string | null; logoId?: string }[] = recommendedJobs.length > 0
+    ? recommendedJobs.map((job) => ({
+        id: job.jobId,
+        title: job.title,
+        company: job.companyName ?? "Unknown",
+        logoUrl: job.companyAvatarUrl ?? null,
+      }))
+    : fallbackRecommendedJobs.map((job) => ({
+        id: job.id,
+        title: job.title,
+        company: job.company,
+        logoUrl: null as string | null,
+        logoId: job.logoId,
+      }));
+
+
 
 
   return (
@@ -754,48 +796,59 @@ export default function JobSeekerDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
-                <CardTitle>Quan ly CV</CardTitle>
-                <CardDescription>Tai len va quan ly cac CV cua ban de san sang ung tuyen.</CardDescription>
+                <CardTitle>Quản lý CV</CardTitle>
+                <CardDescription>Tải lên và quản lý các CV của bạn để sẵn sàng ứng tuyển.</CardDescription>
               </div>
               <Dialog open={isCvOnlineOpen} onOpenChange={handleCvOnlineDialogChange}>
                 <DialogTrigger asChild>
                   <Button variant="outline">CV Online (AI)</Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[860px] max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>CV Online (AI)</DialogTitle>
-                    <DialogDescription>Upload CV de phan tich va chinh sua truoc khi luu.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-6">
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="cv-online-file">Upload CV de phan tich</Label>
+                <DialogContent className="sm:max-w-[860px] max-h-[80vh] overflow-y-auto p-0">
+                  <div className="sticky top-0 z-10 border-b bg-white px-6 py-3 pr-12 relative">
+                    <DialogHeader className="items-center text-center">
+                      <DialogTitle className="text-xl">CV Online (AI)</DialogTitle>
+                      <DialogDescription className="text-center">Upload CV de phan tich va chinh sua truoc khi luu.</DialogDescription>
+                    </DialogHeader>
+                    <DialogClose className="absolute right-4 top-3 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Close</span>
+                    </DialogClose>
+                  </div>
+                  <div className="grid gap-6 px-6 pb-6">
+                    <div className="rounded-lg border bg-slate-50/60 p-4">
+                      <Label htmlFor="cv-online-file" className="text-sm font-semibold">Upload CV de phan tich</Label>
                       <Input
                         id="cv-online-file"
                         type="file"
                         accept=".pdf,.doc,.docx,image/png,image/jpeg"
                         onChange={handleCvParseUpload}
                         disabled={isCvParsing}
+                        className="mt-2"
                       />
-                      <p className="text-xs text-muted-foreground">PDF, DOC, DOCX, PNG, JPG (toi da 10MB).</p>
-                      {isCvParsing ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Dang phan tich CV...
-                        </div>
-                      ) : null}
-                      {isCvOnlineLoading ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Dang tai CV Online...
-                        </div>
-                      ) : null}
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        <span>PDF, DOC, DOCX, PNG, JPG (toi da 10MB).</span>
+                        {isCvParsing ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Dang phan tich CV...
+                          </span>
+                        ) : null}
+                        {isCvOnlineLoading ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Dang tai CV Online...
+                          </span>
+                        ) : null}
+                      </div>
                       {cvOnlineFileName ? (
-                        <p className="text-sm text-muted-foreground">File: {cvOnlineFileName}</p>
+                        <div className="mt-3 rounded-md bg-white px-3 py-2 text-sm text-muted-foreground">
+                          File: {cvOnlineFileName}
+                        </div>
                       ) : null}
                     </div>
                     {!cvOnlineMeta ? (
                       <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                        Upload CV de tao CV Online.
+                        Upload CV để tạo CV Online.
                       </div>
                     ) : null}
                     <Form {...cvOnlineForm}>
@@ -1202,30 +1255,44 @@ export default function JobSeekerDashboardPage() {
               <CardDescription>Các công việc phù hợp với kỹ năng của bạn.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
-              {recommendedJobs.map((job) => {
-                const logo = PlaceHolderImages.find((p) => p.id === job.logoId);
-                return (
-                  <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-start gap-4 group">
-                    {logo && (
-                      <Image
-                        src={logo.imageUrl}
-                        alt={`${job.company} logo`}
-                        width={48}
-                        height={48}
-                        className="rounded-lg"
-                        data-ai-hint={logo.imageHint}
-                      />
-                    )}
-                    <div className="grid gap-1">
-                      <p className="text-sm font-medium leading-none group-hover:text-primary">{job.title}</p>
-                      <p className="text-sm text-muted-foreground">{job.company}</p>
-                    </div>
-                    <Button variant="outline" size="sm" className="ml-auto opacity-0 group-hover:opacity-100">
-                      Xem
-                    </Button>
-                  </Link>
-                );
-              })}
+              {isRecommendedLoading ? (
+                <p className="text-sm text-muted-foreground">Dang tai goi y...</p>
+              ) : recommendedItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Chua co goi y phu hop.</p>
+              ) : (
+                recommendedItems.map((job) => {
+                  const logo = !job.logoUrl && job.logoId ? PlaceHolderImages.find((p) => p.id === job.logoId) : null;
+                  return (
+                    <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-start gap-4 group">
+                      {job.logoUrl ? (
+                        <img
+                          src={job.logoUrl}
+                          alt={`${job.company} logo`}
+                          className="h-12 w-12 rounded-lg object-cover"
+                        />
+                      ) : logo ? (
+                        <Image
+                          src={logo.imageUrl}
+                          alt={`${job.company} logo`}
+                          width={48}
+                          height={48}
+                          className="rounded-lg"
+                          data-ai-hint={logo.imageHint}
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded-lg bg-muted" />
+                      )}
+                      <div className="grid gap-1">
+                        <p className="text-sm font-medium leading-none group-hover:text-primary">{job.title}</p>
+                        <p className="text-sm text-muted-foreground">{job.company}</p>
+                      </div>
+                      <Button variant="outline" size="sm" className="ml-auto opacity-0 group-hover:opacity-100">
+                        Xem
+                      </Button>
+                    </Link>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
         </div>

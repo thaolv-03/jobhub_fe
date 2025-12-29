@@ -26,12 +26,17 @@ type BaseSearchRequest<T> = {
   filter?: T;
 };
 
-export async function listFavorites(page = 0, pageSize = 50): Promise<PageList<Favorite>> {
+export async function listFavorites(
+  page = 0,
+  pageSize = 50,
+  searchedBy = ""
+): Promise<PageList<Favorite>> {
   const response = await apiRequest<PageList<Favorite>>("/api/favorites/search", {
     method: "POST",
     body: {
       pagination: { page, pageSize },
       sortedBy: [{ field: "favoriteId", sort: "DESC" }],
+      searchedBy: searchedBy.trim() || undefined,
     } as BaseSearchRequest<Favorite>,
     suppressAuthFailure: true,
   });

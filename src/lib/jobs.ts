@@ -82,6 +82,17 @@ export async function searchJobs(request: JobSearchRequest): Promise<PageList<Jo
   return response.data;
 }
 
+export async function recommendJobs(request: JobSearchRequest): Promise<PageList<Job>> {
+  const response = await apiRequest<PageList<Job>>("/api/jobs/recommended", {
+    method: "POST",
+    body: request,
+  });
+  if (!response.data) {
+    throw new ApiError(500, "INVALID_RESPONSE", "Job recommendation response missing data.");
+  }
+  return response.data;
+}
+
 export async function getJob(jobId: number): Promise<Job> {
   const response = await apiRequest<Job>(`/api/jobs/${jobId}`, {
     method: "GET",

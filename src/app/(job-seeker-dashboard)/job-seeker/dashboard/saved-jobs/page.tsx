@@ -1,13 +1,15 @@
-'use client';
+﻿'use client';
 
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Building, MapPin, DollarSign, BookmarkX, Bookmark } from "lucide-react";
+import { Building, MapPin, DollarSign, BookmarkX, Bookmark, Search } from "lucide-react";
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { listFavorites, removeFavorite } from "@/lib/favorites";
 import { getJob, type Job } from "@/lib/jobs";
 import { ApiError } from "@/lib/api-types";
@@ -17,15 +19,15 @@ const formatSalary = (job: Job) => {
   const min = job.minSalary ?? null;
   const max = job.maxSalary ?? null;
   if (min != null && max != null) {
-    return `${min} triệu - ${max} triệu`;
+    return `${min} triÃªÌ£u - ${max} triÃªÌ£u`;
   }
   if (min != null) {
-    return `T? ${min} triệu`;
+    return `T? ${min} triÃªÌ£u`;
   }
   if (max != null) {
-    return `??n ${max} triệu`;
+    return `??n ${max} triÃªÌ£u`;
   }
-  return "Thương lượng";
+  return "ThÆ°Æ¡ng lÆ°á»£ng";
 };
 
 type SavedJobRow = Job & { favoriteId?: number };
@@ -33,14 +35,16 @@ type SavedJobRow = Job & { favoriteId?: number };
 export default function SavedJobsPage() {
   const [savedJobs, setSavedJobs] = React.useState<SavedJobRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [search, setSearch] = React.useState("");
   const { toast } = useToast();
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
 
   React.useEffect(() => {
     let mounted = true;
     const loadFavorites = async () => {
       setIsLoading(true);
       try {
-        const favorites = await listFavorites(0, 50);
+        const favorites = await listFavorites(0, 50, debouncedSearch);
         const jobs = await Promise.all(
           favorites.items.map(async (item) => {
             try {
@@ -52,7 +56,16 @@ export default function SavedJobsPage() {
           })
         );
         if (!mounted) return;
-        setSavedJobs(jobs.filter((job): job is SavedJobRow => Boolean(job)));
+        const normalizedQuery = debouncedSearch.toLowerCase();
+        const filtered = jobs.filter((job): job is SavedJobRow => Boolean(job)).filter((job) => {
+          if (!normalizedQuery) return true;
+          const haystack = [job.title, job.companyName, job.location]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(normalizedQuery);
+        });
+        setSavedJobs(filtered);
       } catch (error) {
         if (!mounted) return;
         setSavedJobs([]);
@@ -66,21 +79,21 @@ export default function SavedJobsPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [debouncedSearch]);
 
   const handleUnsave = async (jobId: number, jobTitle: string) => {
     try {
       await removeFavorite(jobId);
       setSavedJobs((prev) => prev.filter((job) => job.jobId != jobId));
       toast({
-        title: "Đã bỏ lưu",
-        description: `Đã bỏ lưu công việc "${jobTitle}".`,
+        title: "ÄÃ£ bá» lÆ°u",
+        description: `ÄÃ£ bá» lÆ°u cÃ´ng viá»‡c "${jobTitle}".`,
       });
     } catch (error) {
       const apiError = error as ApiError;
       toast({
         variant: "destructive",
-        title: "Không thể bỏ lưu",
+        title: "KhÃ´ng thá»ƒ bá» lÆ°u",
         description: apiError.message,
       });
     }
@@ -90,59 +103,81 @@ export default function SavedJobsPage() {
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <Card>
         <CardHeader>
-          <CardTitle>Việc đã lưu</CardTitle>
-          <CardDescription>
-            {savedJobs.length > 0
-              ? `Bạn có ${savedJobs.length} việc đã lưu. Dừng bỏ lỡ cơ hội ứng tuyển!`
-              : "Bạn chưa lưu công việc nào."}
-          </CardDescription>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle>Viec da luu</CardTitle>
+              <CardDescription>
+                {savedJobs.length > 0
+                  ? `Ban co ${savedJobs.length} viec da luu. Dung bo lo co hoi ung tuyen!`
+                  : "Ban chua luu cong viec nao."}
+              </CardDescription>
+            </div>
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Tim kiem viec da luu"
+                className="pl-9"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">Đang tải dữ liệu...</div>
+            <div className="text-center py-12 text-sm text-muted-foreground">Dang tai du lieu...</div>
           ) : savedJobs.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-4">
               {savedJobs.map((job) => {
                 const logo = PlaceHolderImages.find((p) => p.id === "company-logo-fpt");
                 return (
-                  <Card key={job.jobId} className="flex flex-col">
-                    <CardHeader className="flex flex-row items-start gap-4">
-                      {job.companyAvatarUrl ? (
-                        <Image
-                          src={job.companyAvatarUrl}
-                          alt={`${job.companyName ?? "Company"} logo`}
-                          width={48}
-                          height={48}
-                          className="rounded-md"
-                        />
-                      ) : logo ? (
-                        <Image
-                          src={logo.imageUrl}
-                          alt="Company logo"
-                          width={48}
-                          height={48}
-                          className="rounded-md"
-                          data-ai-hint={logo.imageHint}
-                        />
-                      ) : null}
-                      <div>
-                        <CardTitle className="text-lg mb-1 leading-tight">{job.title}</CardTitle>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1"><Building className="w-4 h-4" /> {job.companyName ?? "Unknown"}</p>
+                  <Card key={job.jobId} className="p-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div className="flex items-start gap-4">
+                        {job.companyAvatarUrl ? (
+                          <Image
+                            src={job.companyAvatarUrl}
+                            alt={`${job.companyName ?? "Company"} logo`}
+                            width={56}
+                            height={56}
+                            className="rounded-md"
+                          />
+                        ) : logo ? (
+                          <Image
+                            src={logo.imageUrl}
+                            alt="Company logo"
+                            width={56}
+                            height={56}
+                            className="rounded-md"
+                            data-ai-hint={logo.imageHint}
+                          />
+                        ) : null}
+                        <div>
+                          <CardTitle className="text-base leading-tight">{job.title}</CardTitle>
+                          <p className="mt-1 text-sm text-muted-foreground flex items-center gap-1">
+                            <Building className="w-4 h-4" /> {job.companyName ?? "Unknown"}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-2"><MapPin className="w-4 h-4" /> {job.location ?? "Unknown"}</span>
+                            <span className="flex items-center gap-2"><DollarSign className="w-4 h-4" /> {formatSalary(job)}</span>
+                          </div>
+                        </div>
                       </div>
-                    </CardHeader>
-                    <CardContent className="flex-grow space-y-2 text-sm">
-                      <p className="flex items-center gap-2 text-muted-foreground"><MapPin className="w-4 h-4" /> {job.location ?? "Unknown"}</p>
-                      <p className="flex items-center gap-2 text-muted-foreground"><DollarSign className="w-4 h-4" /> {formatSalary(job)}</p>
-                    </CardContent>
-                    <CardFooter className="flex gap-2">
-                      <Button asChild className="flex-1">
-                        <Link href={`/jobs/${job.jobId}`}>Ứng tuyển ngay</Link>
-                      </Button>
-                      <Button variant="outline" size="icon" onClick={() => handleUnsave(job.jobId, job.title)}>
-                        <BookmarkX className="h-5 w-5" />
-                        <span className="sr-only">Bỏ lưu</span>
-                      </Button>
-                    </CardFooter>
+                      <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
+                        <Button asChild className="w-full md:w-auto">
+                          <Link href={`/jobs/${job.jobId}`}>Ung tuyen ngay</Link>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleUnsave(job.jobId, job.title)}
+                          className="w-full md:w-10"
+                        >
+                          <BookmarkX className="h-5 w-5" />
+                          <span className="sr-only">Bo luu</span>
+                        </Button>
+                      </div>
+                    </div>
                   </Card>
                 );
               })}
@@ -162,3 +197,6 @@ export default function SavedJobsPage() {
     </main>
   );
 }
+
+
+
