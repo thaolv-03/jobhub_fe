@@ -260,6 +260,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           searchPlaceholder="Quick search..."
           rightActions={
             <>
+              <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
+                <Link href="/">Về trang chủ</Link>
+              </Button>
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

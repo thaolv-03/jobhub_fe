@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -9,9 +9,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ApiError } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
-import { searchApplications, searchJobs } from '@/lib/recruiter-search';
+import { useRecruiterJobs } from '@/hooks/use-jobs';
+import { useApplications } from '@/hooks/use-applications';
+import { searchApplications } from '@/lib/recruiter-search';
 import {
   Briefcase,
   CheckCircle2,
@@ -38,11 +39,6 @@ type ApplicationDTO = {
   status: string;
 };
 
-type PageListDTO<T> = {
-  items: T[];
-  count: number;
-};
-
 type JobRow = JobDTO & {
   applicants: number;
 };
@@ -50,12 +46,127 @@ type JobRow = JobDTO & {
 export default function RecruiterDashboardPage() {
   const { roles, accessToken } = useAuth();
   const router = useRouter();
-  const [jobs, setJobs] = useState<JobRow[]>([]);
-  const [recentApplicants, setRecentApplicants] = useState<ApplicationDTO[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const isFetchingRef = useRef(false);
-  const lastTokenRef = useRef<string | null>(null);
+
+  // Memoize request object to prevent queryKey changes
+  const jobsRequest = React.useMemo(() => ({
+    pagination: { page: 0, pageSize: DEFAULT_PAGE_SIZE },
+    sortedBy: [{ field: 'createAt', sort: 'DESC' }] as const,
+    searchedBy: '',
+    filter: null,
+  }), []);
+
+  // Memoize enabled flag to ensure stability
+  const isJobsEnabled = React.useMemo(() => !!accessToken, [accessToken]);
+
+  // Fetch jobs with React Query (recruiter endpoint)
+  const { data: jobsResponse, isLoading: isJobsLoading } = useRecruiterJobs(
+    jobsRequest,
+    accessToken,
+    isJobsEnabled
+  );
+
+  // Memoize jobItems to prevent infinite loop
+  const jobItems = React.useMemo(() => jobsResponse?.items ?? [], [jobsResponse?.items]);
+  
+  // Extract job IDs for dependency comparison (stable reference)
+  const jobIds = React.useMemo(() => {
+    const ids = jobItems.map(job => job.jobId).sort();
+    return ids.length > 0 ? ids.join(',') : '';
+  }, [jobItems]);
+
+  // Fetch application counts for all jobs in parallel using Promise.all
+  const [applicationCounts, setApplicationCounts] = React.useState<Record<number, number>>({});
+  const [isLoadingCounts, setIsLoadingCounts] = React.useState(false);
+
+  React.useEffect(() => {
+    // Skip if no token or no jobs
+    if (!accessToken || jobIds === '') {
+      setApplicationCounts({});
+      setIsLoadingCounts(false);
+      return;
+    }
+
+    // Get current job items from response (fresh data)
+    const currentJobItems = jobsResponse?.items ?? [];
+    if (currentJobItems.length === 0) {
+      setApplicationCounts({});
+      setIsLoadingCounts(false);
+      return;
+    }
+
+    let mounted = true;
+    setIsLoadingCounts(true);
+    
+    Promise.all(
+      currentJobItems.map(async (job) => {
+        try {
+          const result = await searchApplications<{ items: unknown[]; count: number }>(
+            job.jobId,
+            {
+              pagination: { page: 0, pageSize: 1 },
+              sortedBy: [],
+              searchedBy: '',
+              filter: null,
+            },
+            accessToken
+          );
+          return { jobId: job.jobId, count: result.data?.count ?? 0 };
+        } catch {
+          return { jobId: job.jobId, count: 0 };
+        }
+      })
+    ).then((results) => {
+      if (!mounted) return;
+      const counts: Record<number, number> = {};
+      results.forEach(({ jobId, count }) => {
+        counts[jobId] = count;
+      });
+      setApplicationCounts(counts);
+      setIsLoadingCounts(false);
+    });
+
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobIds, accessToken]); // Only depend on stable primitive values
+
+  // Combine jobs with application counts
+  const jobs = useMemo(() => {
+    return jobItems.map((job) => ({
+      ...job,
+      applicants: applicationCounts[job.jobId] ?? 0,
+    }));
+  }, [jobItems, applicationCounts]);
+
+  // Memoize applications request object
+  const applicationsRequest = React.useMemo(() => ({
+    pagination: { page: 0, pageSize: 5 },
+    sortedBy: [] as const,
+    searchedBy: '',
+    filter: null,
+  }), []);
+
+  // Memoize firstJobId to prevent unnecessary re-renders
+  const firstJobId = React.useMemo<number | null>(() => {
+    if (jobs.length === 0) return null;
+    const firstJob = jobs[0];
+    if (!firstJob || typeof firstJob.jobId !== 'number') return null;
+    return firstJob.jobId;
+  }, [jobs.length, jobs[0]?.jobId ?? null]);
+
+  // Memoize enabled flag for applications
+  const isApplicationsEnabled = React.useMemo(() => !!firstJobId && !!accessToken, [firstJobId, accessToken]);
+
+  // Fetch recent applicants for first job
+  const { data: applicationsResponse } = useApplications(
+    firstJobId,
+    applicationsRequest,
+    accessToken,
+    isApplicationsEnabled
+  );
+
+  const recentApplicants = applicationsResponse?.data?.items ?? [];
 
   const handlePostJobClick = () => {
     if (roles.includes('RECRUITER')) {
@@ -98,72 +209,7 @@ export default function RecruiterDashboardPage() {
     }
   };
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      if (!accessToken) return;
-      if (isFetchingRef.current) return;
-      if (lastTokenRef.current === accessToken) return;
-      lastTokenRef.current = accessToken;
-      isFetchingRef.current = true;
-      setIsLoading(true);
-      setErrorMessage(null);
-      let hasError = false;
-      try {
-        const jobsResponse = await searchJobs<PageListDTO<JobDTO>>({
-          pagination: { page: 0, pageSize: DEFAULT_PAGE_SIZE },
-          sortedBy: [{ field: 'createAt', sort: 'desc' }],
-          searchedBy: '',
-          filter: null,
-        }, accessToken);
-
-        const jobItems = jobsResponse.data?.items || [];
-        const rows = await Promise.all(jobItems.map(async (job) => {
-          try {
-            const apps = await searchApplications<PageListDTO<unknown>>(job.jobId, {
-              pagination: { page: 0, pageSize: 1 },
-              sortedBy: [],
-              searchedBy: '',
-              filter: null,
-            }, accessToken);
-            return { ...job, applicants: apps.data?.count || 0 };
-          } catch {
-            return { ...job, applicants: 0 };
-          }
-        }));
-
-        setJobs(rows);
-
-        if (rows.length > 0) {
-          const applications = await searchApplications<PageListDTO<ApplicationDTO>>(rows[0].jobId, {
-            pagination: { page: 0, pageSize: 5 },
-            sortedBy: [],
-            searchedBy: '',
-            filter: null,
-          }, accessToken);
-          setRecentApplicants(applications.data?.items || []);
-        } else {
-          setRecentApplicants([]);
-        }
-      } catch (error) {
-        hasError = true;
-        const apiError = error as ApiError;
-        setErrorMessage(apiError.message || 'Không thể tải dữ liệu dashboard.');
-      } finally {
-        setIsLoading(false);
-        isFetchingRef.current = false;
-        if (hasError) {
-          lastTokenRef.current = null;
-        }
-      }
-    };
-
-    if (!accessToken) {
-      setIsLoading(false);
-      return;
-    }
-    void fetchDashboard();
-  }, [accessToken]);
-
+  const isLoading = isJobsLoading;
   const totalApplicants = jobs.reduce((sum, job) => sum + job.applicants, 0);
   const openJobs = jobs.filter((job) => job.status === 'OPEN').length;
 
@@ -189,10 +235,6 @@ export default function RecruiterDashboardPage() {
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-[320px] w-full md:col-span-2" />
           <Skeleton className="h-[320px] w-full" />
-        </div>
-      ) : errorMessage ? (
-        <div className="rounded-lg border border-dashed bg-background p-6 text-center text-sm text-muted-foreground">
-          {errorMessage}
         </div>
       ) : (
         <>
@@ -352,5 +394,3 @@ export default function RecruiterDashboardPage() {
     </div>
   );
 }
-
-

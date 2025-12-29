@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import type { MouseEvent } from "react";
+import React, { type MouseEvent } from "react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "../ui/button";
@@ -12,11 +12,44 @@ import { Skeleton } from "../ui/skeleton";
 import { LogOut, LayoutDashboard, Settings, Briefcase } from "lucide-react";
 import { Container } from "@/components/layout/container";
 import { useJobSeekerProfileGate } from "@/contexts/job-seeker-profile-context";
+import { fetchJobSeekerProfile } from "@/lib/job-seeker-profile";
+import { fetchRecruiterProfile } from "@/lib/recruiter-profile";
 
 export function Navbar() {
   const { account, isAuthenticated, isLoading, logout, roles } = useAuth();
   const router = useRouter();
   const { ensureProfile } = useJobSeekerProfileGate();
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(account?.avatarUrl ?? null);
+
+  React.useEffect(() => {
+    setAvatarUrl(account?.avatarUrl ?? null);
+  }, [account?.avatarUrl]);
+
+  React.useEffect(() => {
+    if (!isAuthenticated || !account) return;
+    let mounted = true;
+    const loadAvatar = async () => {
+      try {
+        if (roles.includes("JOB_SEEKER")) {
+          const profile = await fetchJobSeekerProfile();
+          if (!mounted) return;
+          setAvatarUrl(profile?.avatarUrl ?? null);
+          return;
+        }
+        if (roles.includes("RECRUITER") || roles.includes("RECRUITER_PENDING")) {
+          const profile = await fetchRecruiterProfile();
+          if (!mounted) return;
+          setAvatarUrl(profile?.avatarUrl ?? null);
+        }
+      } catch (error) {
+        if (!mounted) return;
+      }
+    };
+    void loadAvatar();
+    return () => {
+      mounted = false;
+    };
+  }, [account, isAuthenticated, roles]);
 
   const handleLogout = async () => {
     await logout();
@@ -83,7 +116,7 @@ export function Navbar() {
                     className="overflow-hidden rounded-full"
                 >
                     <Avatar>
-                        <AvatarImage src={`https://i.pravatar.cc/150?u=${account.accountId}`} alt="Avatar" />
+                        <AvatarImage src={avatarUrl ?? ""} alt="Avatar" />
                         <AvatarFallback>{getAvatarFallback(account.email)}</AvatarFallback>
                     </Avatar>
                 </Button>

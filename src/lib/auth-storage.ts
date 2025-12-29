@@ -1,6 +1,7 @@
 export const ACCESS_TOKEN_KEY = "jobhub_access_token";
 export const ACCOUNT_KEY = "jobhub_account";
 export const REFRESH_TOKEN_COOKIE_KEY = "jobhub_refresh_token";
+const AUTH_CHANGE_EVENT = "jobhub-auth-change";
 
 let authFailed = false;
 
@@ -40,12 +41,18 @@ function eraseCookie(name: string) {
   document.cookie = name + "=; Max-Age=-99999999; path=/; SameSite=Lax;";
 }
 
+function notifyAuthChange() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
+}
+
 export function saveAuthData(data: { accessToken: string; refreshToken: string; account: unknown }): void {
   if (typeof window !== "undefined") {
     localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
     localStorage.setItem(ACCOUNT_KEY, JSON.stringify(data.account));
     setCookie(REFRESH_TOKEN_COOKIE_KEY, data.refreshToken);
     localStorage.removeItem("jobhub_consulting_submitted");
+    notifyAuthChange();
   }
   authFailed = false;
 }
@@ -54,6 +61,7 @@ export function saveTokens(data: { accessToken: string; refreshToken: string }):
   if (typeof window !== "undefined") {
     localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
     setCookie(REFRESH_TOKEN_COOKIE_KEY, data.refreshToken);
+    notifyAuthChange();
   }
   authFailed = false;
 }
@@ -89,6 +97,7 @@ export function updateAccount<T = unknown>(updater: (account: T | null) => T | n
   } else {
     localStorage.removeItem(ACCOUNT_KEY);
   }
+  notifyAuthChange();
 }
 
 export function clearAuthData(): void {
@@ -97,5 +106,6 @@ export function clearAuthData(): void {
     localStorage.removeItem(ACCOUNT_KEY);
     eraseCookie(REFRESH_TOKEN_COOKIE_KEY);
     localStorage.removeItem("jobhub_consulting_submitted");
+    notifyAuthChange();
   }
 }

@@ -32,7 +32,11 @@ type OpenProfileIntent = {
   type: "OPEN_PROFILE";
 };
 
-type GateIntent = ApplyIntent | OpenProfileIntent;
+type FavoriteIntent = {
+  type: "FAVORITE_JOB";
+};
+
+type GateIntent = ApplyIntent | OpenProfileIntent | FavoriteIntent;
 
 type EnsureProfileResult = {
   hasProfile: boolean;
@@ -97,7 +101,7 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
       return inflightRef.current;
     }
 
-    inflightRef.current = fetchJobSeekerProfile()
+    inflightRef.current = fetchJobSeekerProfile({ allowUnauthenticated: true })
       .then((data) => {
         setProfile(data);
         setHasProfile(!!data);
@@ -164,7 +168,7 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
 
           if (nextIntent.type === "APPLY_JOB") {
             openApplyDialog(nextIntent);
-          } else {
+          } else if (nextIntent.type === "OPEN_PROFILE") {
             router.push("/job-seeker/dashboard");
           }
           return { hasProfile: true };
@@ -242,7 +246,7 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
           return next;
         });
         try {
-          await refreshToken();
+          await refreshToken({ suppressAuthFailure: true });
         } catch (error) {
           // Ignore refresh errors; UI still updated via local storage.
         }
@@ -301,10 +305,10 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
           setIsApplying(false);
           return;
         }
-        if (selectedFile.size > 5 * 1024 * 1024) {
+        if (selectedFile.size > 10 * 1024 * 1024) {
           toast({
             title: "CV quá lớn",
-            description: "Kích thước file không được vượt quá 5MB.",
+            description: "Kích thước file không được vượt quá 10MB.",
             variant: "destructive",
           });
           setIsApplying(false);
@@ -317,8 +321,7 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
       }
 
       await applyToJob(applyJobId, {
-        cvUrl: nextProfile?.cvUrl ?? null,
-        cvId: nextProfile?.cvId ?? null,
+        parsedCvId: nextProfile?.cvId ?? null,
       });
       toast({
         title: "Ứng tuyển thành công",
@@ -475,7 +478,7 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
                   onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Chấp nhận file PDF, tối đa 5MB. File sẽ được tải lên và dùng để ứng tuyển.
+                  Chấp nhận file PDF, tối đa 10MB. File sẽ được tải lên và dùng để ứng tuyển.
                 </p>
               </div>
             )}

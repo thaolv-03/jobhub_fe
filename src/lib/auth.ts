@@ -3,6 +3,7 @@
 import { apiRequest } from './api-client';
 import { ApiError } from './api-types';
 import type { ApiResponse } from './api-types';
+import { fetchWithAuth } from './fetchWithAuth';
 import {
   ACCOUNT_KEY,
   clearAuthData,
@@ -35,11 +36,16 @@ export interface Account {
   status: string;
   createdAt: string | null;
   roles: Role[];
+  avatarUrl?: string | null;
 }
 
 export interface LoginRequest {
   email: string;
   password?: string;
+}
+
+export interface GoogleLoginRequest {
+  idToken: string;
 }
 
 export interface LoginResponse {
@@ -82,6 +88,7 @@ export interface UpgradeRecruiterRequest {
     companyName: string;
     location?: string;
     website?: string;
+    introduction?: string;
     position: string;
     phone: string;
 }
@@ -103,6 +110,7 @@ export async function login(payload: LoginRequest): Promise<Account> {
   const response = await apiRequest<LoginResponse>('/api/auth/login', {
     method: 'POST',
     body: payload,
+    suppressAuthFailure: true,
   });
   const loginData = response.data;
   if (!loginData) {
@@ -110,6 +118,35 @@ export async function login(payload: LoginRequest): Promise<Account> {
   }
   saveAuthData(loginData);
   return loginData.account;
+}
+
+export async function googleLogin(payload: GoogleLoginRequest): Promise<Account> {
+  const attemptLogin = async () => {
+    const response = await apiRequest<LoginResponse>('/api/auth/google-login', {
+      method: 'POST',
+      body: payload,
+      suppressAuthFailure: true,
+    });
+    const loginData = response.data;
+    if (!loginData) {
+      throw new ApiError(500, 'INTERNAL_ERROR', 'Google login response did not contain data.');
+    }
+    return loginData;
+  };
+
+  try {
+    const loginData = await attemptLogin();
+    saveAuthData(loginData);
+    return loginData.account;
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 501) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const loginData = await attemptLogin();
+      saveAuthData(loginData);
+      return loginData.account;
+    }
+    throw error;
+  }
 }
 
 export async function logout(): Promise<void> {
@@ -159,7 +196,7 @@ export async function resetPassword(params: ResetPasswordRequest): Promise<ApiRe
   });
 }
 
-export async function refreshToken(): Promise<RefreshTokenResponse> {
+export async function refreshToken(options?: { suppressAuthFailure?: boolean }): Promise<RefreshTokenResponse> {
     const currentRefreshToken = getRefreshToken();
     if (!currentRefreshToken) {
         throw new ApiError(401, 'NO_REFRESH_TOKEN', 'No refresh token available.');
@@ -167,6 +204,7 @@ export async function refreshToken(): Promise<RefreshTokenResponse> {
     const response = await apiRequest<RefreshTokenResponse>('/api/auth/refresh-token', {
         method: 'POST',
         refreshToken: currentRefreshToken,
+        suppressAuthFailure: options?.suppressAuthFailure ?? false,
     });
     const tokenData = response.data;
     if (!tokenData) {
@@ -197,11 +235,21 @@ export async function upgradeToRecruiter(payload: UpgradeRecruiterRequest): Prom
         throw new ApiError(401, 'UNAUTHORIZED', 'Authentication token not found.');
     }
 
-    const response = await apiRequest<UpgradeRecruiterResponse>('/api/recruiters/upgrade', {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+    const response = await fetchWithAuth<UpgradeRecruiterResponse>(`${baseUrl}/api/recruiters/upgrade`, {
         method: 'POST',
-        body: payload,
-        accessToken: accessToken,
+        body: JSON.stringify(payload),
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+        },
+        accessToken,
+        parseAs: 'raw',
     });
+
+    if (!response) {
+        throw new ApiError(500, 'INVALID_RESPONSE', 'Upgrade recruiter response missing data.');
+    }
 
     // Optimistically mark account as pending so layout can redirect immediately.
     try {
@@ -269,5 +317,5 @@ export async function upgradeToRecruiter(payload: UpgradeRecruiterRequest): Prom
     // Fire and forget; we don't want this to throw to the caller.
     void refreshAccount();
 
-    return response.data;
+    return response;
 }

@@ -11,7 +11,8 @@
  import { useAuth } from '@/hooks/use-auth';
  import { useToast } from '@/hooks/use-toast';
  import { apiRequest, ApiError } from '@/lib/api-client';
- import { getAccount, RoleName } from '@/lib/auth';
+import { getAccount, RoleName } from '@/lib/auth';
+import { updateAccount } from '@/lib/auth-storage';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { Building2, Check, Circle, Clock, FileCheck2, UploadCloud } from 'lucide-react';
 
@@ -120,17 +121,37 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
      reload();
    }, [reload]);
 
-   const fetchRecruiter = useCallback(async () => {
-     if (!accessToken) {
-       return;
-     }
-     const response = await apiRequest<RecruiterProfileResponse>('/api/recruiters/me', {
-       method: 'GET',
-       accessToken,
-     });
-     setRecruiter(response.data);
-     return response.data;
-   }, [accessToken]);
+  const fetchRecruiter = useCallback(async () => {
+    if (!accessToken) {
+      return;
+    }
+    try {
+      const response = await apiRequest<RecruiterProfileResponse>('/api/recruiters/me', {
+        method: 'GET',
+        accessToken,
+      });
+      setRecruiter(response.data);
+      return response.data;
+    } catch (error) {
+      const apiError = error as ApiError;
+      const isNotFound = apiError?.code === 404 || apiError?.status?.toLowerCase().includes('not_found');
+      if (isNotFound) {
+        localStorage.removeItem('jobhub_consulting_submitted');
+        localStorage.removeItem('jobhub_upgrade_company_source');
+        updateAccount<any>((current) => {
+          if (!current || !Array.isArray(current.roles)) return current;
+          return {
+            ...current,
+            roles: current.roles.filter(
+              (role: { roleName?: string }) => role.roleName !== 'RECRUITER' && role.roleName !== 'RECRUITER_PENDING'
+            ),
+          };
+        });
+        router.replace('/recruiter/dashboard/upgrade-recruiter');
+      }
+      throw error;
+    }
+  }, [accessToken, router]);
 
    const fetchCompany = useCallback(
      async (companyId?: number) => {
@@ -174,13 +195,17 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
          promoteRecruiterRole();
          router.replace('/recruiter/dashboard');
        }
-     } catch (error) {
-       const apiError = error as ApiError;
-       toast({
-         variant: 'destructive',
-         title: 'Status check failed',
-         description: apiError.message || 'Could not check recruiter status.',
-       });
+    } catch (error) {
+      const apiError = error as ApiError;
+      const isNotFound = apiError?.code === 404 || apiError?.status?.toLowerCase().includes('not_found');
+      if (isNotFound) {
+        return;
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Status check failed',
+        description: apiError.message || 'Could not check recruiter status.',
+      });
      } finally {
        setIsCheckingStatus(false);
      }
@@ -190,15 +215,19 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
      if (!accessToken) {
        return;
      }
-     const init = async () => {
-       const recruiterData = await fetchRecruiter();
-       if (recruiterData?.companyId) {
-         await fetchCompany(recruiterData.companyId);
-       }
-       await fetchDocuments();
-     };
-     void init();
-   }, [accessToken, fetchCompany, fetchDocuments, fetchRecruiter]);
+    const init = async () => {
+      try {
+        const recruiterData = await fetchRecruiter();
+        if (recruiterData?.companyId) {
+          await fetchCompany(recruiterData.companyId);
+        }
+        await fetchDocuments();
+      } catch (error) {
+        // handled in fetchRecruiter
+      }
+    };
+    void init();
+  }, [accessToken, fetchCompany, fetchDocuments, fetchRecruiter]);
 
    useEffect(() => {
      if (!accessToken) {

@@ -22,7 +22,7 @@ const emailSchema = z.object({
 });
 
 const otpSchema = z.object({
-  otp: z.string().length(5, { message: 'OTP phải có 5 ký tự.' }),
+  otp: z.string().length(6, { message: 'OTP phải có 6 ký tự.' }),
 });
 
 const passwordSchema = z.object({
@@ -34,6 +34,8 @@ const passwordSchema = z.object({
 });
 
 type Step = 'email' | 'otp' | 'password';
+
+const RESET_STORAGE_KEY = "jobhub_reset_password_state";
 
 function ResetPasswordFlow() {
   const [step, setStep] = useState<Step>('email');
@@ -47,10 +49,16 @@ function ResetPasswordFlow() {
   useEffect(() => {
     if (emailFromQuery) {
         setEmail(emailFromQuery);
-        // Logic to determine step based on query params could be added here
-        // For now, we manually progress, but a direct link could set the step.
     }
   }, [emailFromQuery]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(
+      RESET_STORAGE_KEY,
+      JSON.stringify({ email, step })
+    );
+  }, [email, step]);
 
 
   const emailForm = useForm<z.infer<typeof emailSchema>>({
@@ -67,6 +75,31 @@ function ResetPasswordFlow() {
     resolver: zodResolver(passwordSchema),
     defaultValues: { newPassword: '' },
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(RESET_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { email?: string; step?: Step };
+      if (parsed.email) {
+        setEmail(parsed.email);
+        emailForm.setValue("email", parsed.email);
+      }
+      if (parsed.step && ["email", "otp", "password"].includes(parsed.step)) {
+        setStep(parsed.step);
+      }
+    } catch (error) {
+      localStorage.removeItem(RESET_STORAGE_KEY);
+    }
+  }, [emailForm]);
+
+  useEffect(() => {
+    if (emailFromQuery) {
+        setEmail(emailFromQuery);
+        emailForm.setValue("email", emailFromQuery);
+    }
+  }, [emailFromQuery, emailForm]);
 
   const handleEmailSubmit = async (values: z.infer<typeof emailSchema>) => {
     setIsLoading(true);
@@ -105,6 +138,9 @@ function ResetPasswordFlow() {
     setIsLoading(true);
     try {
       await apiResetPassword({ email, newPassword: values.newPassword });
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(RESET_STORAGE_KEY);
+      }
       toast({ title: 'Thành công', description: 'Mật khẩu của bạn đã được đặt lại. Vui lòng đăng nhập.' });
       router.push('/login');
     } catch (error) {
@@ -158,7 +194,7 @@ function ResetPasswordFlow() {
         <>
           <CardHeader>
             <CardTitle>Xác thực OTP</CardTitle>
-            <CardDescription>Nhập mã OTP gồm 5 chữ số đã được gửi đến {email}.</CardDescription>
+            <CardDescription>Nh?p m? OTP g?m 6 ch? s? ?? ???c g?i ??n {email}.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...otpForm}>
@@ -170,7 +206,7 @@ function ResetPasswordFlow() {
                     <FormItem>
                       <FormLabel>Mã OTP</FormLabel>
                       <FormControl>
-                        <Input placeholder="12345" {...field} disabled={isLoading} />
+                        <Input placeholder="123456" {...field} disabled={isLoading} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -1,4 +1,3 @@
-﻿
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -10,34 +9,78 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { ApiError } from '@/lib/api-client';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
+
+const MAX_LOGO_SIZE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_LOGO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 type CompanySuggestion = {
   companyId: number;
   companyName: string;
 };
 
-const upgradeSchema = z.object({
-  companyId: z.number().optional(),
-  companyName: z.string().min(1, { message: 'Tên công ty không được để trống.' }),
-  location: z.string().optional(),
-  website: z.string().url({ message: 'URL website không hợp lệ.' }).optional().or(z.literal('')),
-  position: z.string().min(1, { message: 'Vị trí của bạn không được để trống.' }),
-  phone: z.string().regex(/^[0-9]{10,11}$/, { message: 'Số điện thoại không hợp lệ.' }),
-}).superRefine((values, ctx) => {
-  if (!values.companyId && (!values.location || values.location.trim().length === 0)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['location'],
-      message: 'Location is required when creating a new company.',
-    });
-  }
-});
+const TEXT = {
+  title: "\u0110\u0103ng k\u00fd t\u00e0i kho\u1ea3n Nh\u00e0 tuy\u1ec3n d\u1ee5ng",
+  subtitle: "Cung c\u1ea5p th\u00f4ng tin c\u00f4ng ty \u0111\u1ec3 b\u1eaft \u0111\u1ea7u t\u00ecm ki\u1ebfm \u1ee9ng vi\u00ean t\u00e0i n\u0103ng tr\u00ean JobHub.",
+  companyNameLabel: "T\u00ean c\u00f4ng ty",
+  companyNamePlaceholder: "V\u00ed d\u1ee5: C\u00f4ng ty C\u1ed5 ph\u1ea7n JobHub",
+  locationLabel: "\u0110\u1ecba ch\u1ec9 c\u00f4ng ty",
+  locationPlaceholder: "V\u00ed d\u1ee5: H\u00e0 N\u1ed9i, Vi\u1ec7t Nam",
+  websiteLabel: "Website",
+  websitePlaceholder: "https://congtycuaban.com",
+  introductionLabel: "Gi\u1edbi thi\u1ec7u v\u1ec1 c\u00f4ng ty",
+  introductionPlaceholder: "M\u00f4 t\u1ea3 ng\u1eafn v\u1ec1 c\u00f4ng ty, l\u0129nh v\u1ef1c ho\u1ea1t \u0111\u1ed9ng, quy m\u00f4...",
+  positionLabel: "Ch\u1ee9c v\u1ee5 c\u1ee7a b\u1ea1n",
+  positionPlaceholder: "V\u00ed d\u1ee5: Tr\u01b0\u1edfng ph\u00f2ng Nh\u00e2n s\u1ef1",
+  phoneLabel: "S\u1ed1 \u0111i\u1ec7n tho\u1ea1i c\u00f4ng ty",
+  phonePlaceholder: "S\u1ed1 \u0111i\u1ec7n tho\u1ea1i \u0111\u1ec3 \u1ee9ng vi\u00ean li\u00ean h\u1ec7",
+  submitLabel: "G\u1eedi y\u00eau c\u1ea7u \u0111\u0103ng k\u00fd",
+  footer: "B\u1eb1ng vi\u1ec7c ti\u1ebfp t\u1ee5c, b\u1ea1n \u0111\u1ed3ng \u00fd v\u1edbi \u0110i\u1ec1u kho\u1ea3n d\u1ecbch v\u1ee5 v\u00e0 Ch\u00ednh s\u00e1ch quy\u1ec1n ri\u00eang t\u01b0 c\u1ee7a JobHub.",
+  suggestionLoading: "\u0110ang t\u1ea3i g\u1ee3i \u00fd...",
+  suggestionEmpty: "Kh\u00f4ng t\u00ecm th\u1ea5y g\u1ee3i \u00fd.",
+  toastSuccessTitle: "Y\u00eau c\u1ea7u \u0111\u00e3 \u0111\u01b0\u1ee3c g\u1eedi!",
+  toastSuccessDescription: "Y\u00eau c\u1ea7u \u0111\u0103ng k\u00fd t\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd ph\u00ea duy\u1ec7t.",
+  toastErrorTitle: "G\u1eedi y\u00eau c\u1ea7u th\u1ea5t b\u1ea1i",
+  toastErrorFallback: "\u0110\u00e3 c\u00f3 l\u1ed7i x\u1ea3y ra. Vui l\u00f2ng th\u1eed l\u1ea1i.",
+  logoLabel: "\u1ea2nh c\u00f4ng ty",
+  logoHint: "H\u1ed7 tr\u1ee3 JPG, PNG, WEBP. T\u1ed1i \u0111a 10MB.",
+  logoEmpty: "Logo",
+  logoTypeError: "Ch\u1ec9 h\u1ed7 tr\u1ee3 JPG, PNG, WEBP.",
+  logoSizeError: "Dung l\u01b0\u1ee3ng \u1ea3nh t\u1ed1i \u0111a 10MB.",
+  logoUploadError: "T\u1ea3i \u1ea3nh c\u00f4ng ty th\u1ea5t b\u1ea1i.",
+  validationCompanyName: "T\u00ean c\u00f4ng ty kh\u00f4ng \u0111\u01b0\u1ee3c \u0111\u1ec3 tr\u1ed1ng.",
+  validationWebsite: "URL website kh\u00f4ng h\u1ee3p l\u1ec7.",
+  validationIntroduction: "Gi\u1edbi thi\u1ec7u c\u00f4ng ty kh\u00f4ng v\u01b0\u1ee3t qu\u00e1 1000 k\u00fd t\u1ef1.",
+  validationPosition: "V\u1ecb tr\u00ed c\u1ee7a b\u1ea1n kh\u00f4ng \u0111\u01b0\u1ee3c \u0111\u1ec3 tr\u1ed1ng.",
+  validationPhone: "S\u1ed1 \u0111i\u1ec7n tho\u1ea1i kh\u00f4ng h\u1ee3p l\u1ec7.",
+  validationLocationRequired: "\u0110\u1ecba ch\u1ec9 c\u00f4ng ty l\u00e0 b\u1eaft bu\u1ed9c khi \u0111\u0103ng k\u00fd c\u00f4ng ty m\u1edbi.",
+};
+
+const upgradeSchema = z
+  .object({
+    companyId: z.number().optional(),
+    companyName: z.string().min(1, { message: TEXT.validationCompanyName }),
+    location: z.string().optional(),
+    website: z.string().url({ message: TEXT.validationWebsite }).optional().or(z.literal('')),
+    introduction: z.string().max(1000, { message: TEXT.validationIntroduction }).optional(),
+    position: z.string().min(1, { message: TEXT.validationPosition }),
+    phone: z.string().regex(/^[0-9]{10,11}$/, { message: TEXT.validationPhone }),
+  })
+  .superRefine((values, ctx) => {
+    if (!values.companyId && (!values.location || values.location.trim().length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['location'],
+        message: TEXT.validationLocationRequired,
+      });
+    }
+  });
 
 type UpgradeFormValues = z.infer<typeof upgradeSchema>;
 
@@ -50,6 +93,8 @@ export default function UpgradeRecruiterPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const [selectedCompanyName, setSelectedCompanyName] = useState<string | null>(null);
+  const [companyLogoFile, setCompanyLogoFile] = useState<File | null>(null);
+  const [companyLogoPreview, setCompanyLogoPreview] = useState<string | null>(null);
   const isSubmittingRef = useRef(false);
 
   const form = useForm<UpgradeFormValues>({
@@ -59,12 +104,21 @@ export default function UpgradeRecruiterPage() {
       companyName: '',
       location: '',
       website: '',
+      introduction: '',
       position: '',
       phone: '',
     },
   });
 
   const companyName = form.watch('companyName');
+
+  useEffect(() => {
+    return () => {
+      if (companyLogoPreview) {
+        URL.revokeObjectURL(companyLogoPreview);
+      }
+    };
+  }, [companyLogoPreview]);
 
   useEffect(() => {
     const trimmed = (companyName || '').trim();
@@ -113,6 +167,48 @@ export default function UpgradeRecruiterPage() {
     }
   }, [companyName, form, selectedCompanyName]);
 
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      toast({
+        variant: 'destructive',
+        title: TEXT.logoTypeError,
+      });
+      event.target.value = '';
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE_BYTES) {
+      toast({
+        variant: 'destructive',
+        title: TEXT.logoSizeError,
+      });
+      event.target.value = '';
+      return;
+    }
+
+    if (companyLogoPreview) {
+      URL.revokeObjectURL(companyLogoPreview);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setCompanyLogoFile(file);
+    setCompanyLogoPreview(previewUrl);
+  };
+
+  const uploadCompanyAvatar = async (companyId: number, file: File) => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    await fetchWithAuth(`${baseUrl}/api/companies/${companyId}/avatar`, {
+      method: 'PATCH',
+      body: formData,
+      parseAs: 'api',
+    });
+  };
+
   const handleUpgradeSubmit = async (values: UpgradeFormValues) => {
     if (isSubmittingRef.current || isLoading) {
       return;
@@ -127,19 +223,32 @@ export default function UpgradeRecruiterPage() {
       } catch (storageError) {
         console.error('Failed to store company source', storageError);
       }
-      await upgradeToRecruiter(values);
+      const upgradeResponse = await upgradeToRecruiter(values);
+      const resolvedCompanyId = upgradeResponse?.companyId ?? values.companyId;
+      if (companyLogoFile && resolvedCompanyId) {
+        try {
+          await uploadCompanyAvatar(resolvedCompanyId, companyLogoFile);
+        } catch (error) {
+          const apiError = error as ApiError;
+          toast({
+            variant: 'destructive',
+            title: TEXT.logoUploadError,
+            description: apiError?.message,
+          });
+        }
+      }
       toast({
-        title: 'Yêu cầu đã được gửi!',
-        description: 'Yêu cầu nâng cấp tài khoản của bạn đang chờ phê duyệt.',
+        title: TEXT.toastSuccessTitle,
+        description: TEXT.toastSuccessDescription,
       });
       router.push('/recruiter/dashboard/consulting-need');
-      router.refresh(); // Force reload to update layout logic
+      router.refresh();
     } catch (error) {
       const e = error as ApiError;
       toast({
         variant: 'destructive',
-        title: 'Gửi yêu cầu thất bại',
-        description: e.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.',
+        title: TEXT.toastErrorTitle,
+        description: e.message || TEXT.toastErrorFallback,
       });
     } finally {
       isSubmittingRef.current = false;
@@ -149,151 +258,175 @@ export default function UpgradeRecruiterPage() {
 
   return (
     <main className="flex min-h-[calc(100vh-113px)] flex-col items-center justify-center gap-4 p-4 md:gap-8 md:p-8">
-        <div className="w-full max-w-2xl">
-            <Card>
-                <CardHeader className="text-center">
-                    <CardTitle className="text-2xl font-bold text-primary">Nâng cấp tài khoản Nhà tuyển dụng</CardTitle>
-                    <CardDescription>
-                        Cung cấp thông tin công ty để bắt đầu tìm kiếm ứng viên tài năng trên JobHub.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Form {...form}>
-                    <form onSubmit={form.handleSubmit(handleUpgradeSubmit)} className="space-y-6">
-                        <FormField
-                            control={form.control}
-                            name="companyName"
-                            render={({ field }) => (
-                                <FormItem className="relative">
-                                <FormLabel>Tên công ty</FormLabel>
-                                <FormControl>
-                                    <Input
-                                      placeholder="Ví dụ: Công ty Cổ phần JobHub"
-                                      {...field}
-                                      disabled={isLoading}
-                                      onBlur={() => setShowSuggestions(false)}
-                                    />
-                                </FormControl>
-                                {showSuggestions && (
-                                  <div className="absolute z-20 mt-2 w-full rounded-md border bg-background shadow-lg">
-                                    {isFetchingSuggestions && (
-                                      <div className="px-3 py-2 text-xs text-muted-foreground">
-                                        Loading suggestions...
-                                      </div>
-                                    )}
-                                    {!isFetchingSuggestions && suggestions.length === 0 && (
-                                      <div className="px-3 py-2 text-xs text-muted-foreground">
-                                        No suggestions found.
-                                      </div>
-                                    )}
-                                    {!isFetchingSuggestions && suggestions.length > 0 && (
-                                      <ul className="max-h-56 overflow-auto py-1">
-                                        {suggestions.map((item) => (
-                                          <li key={item.companyId}>
-                                            <button
-                                              type="button"
-                                              className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
-                                              onMouseDown={(event) => event.preventDefault()}
-                                              onClick={() => {
-                                                form.setValue('companyName', item.companyName, {
-                                                  shouldValidate: true,
-                                                  shouldDirty: true,
-                                                });
-                                                form.setValue('companyId', item.companyId, {
-                                                  shouldValidate: true,
-                                                  shouldDirty: true,
-                                                });
-                                                setSelectedCompanyName(item.companyName);
-                                                setShowSuggestions(false);
-                                              }}
-                                            >
-                                              {item.companyName}
-                                            </button>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    )}
-                                  </div>
-                                )}
-                                <FormMessage />
-                                </FormItem>
-                            )}
+      <div className="w-full max-w-2xl">
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-primary">{TEXT.title}</CardTitle>
+            <CardDescription>{TEXT.subtitle}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleUpgradeSubmit)} className="space-y-6">
+                <div className="space-y-2">
+                  <FormLabel>{TEXT.logoLabel}</FormLabel>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="h-20 w-20 overflow-hidden rounded-lg border bg-muted">
+                      {companyLogoPreview ? (
+                        <img src={companyLogoPreview} alt="Company logo preview" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                          {TEXT.logoEmpty}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <Input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoChange} />
+                      <p className="text-xs text-muted-foreground">{TEXT.logoHint}</p>
+                    </div>
+                  </div>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="companyName"
+                  render={({ field }) => (
+                    <FormItem className="relative">
+                      <FormLabel>{TEXT.companyNameLabel}</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={TEXT.companyNamePlaceholder}
+                          {...field}
+                          disabled={isLoading}
+                          onBlur={() => setShowSuggestions(false)}
                         />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <FormField
-                                control={form.control}
-                                name="location"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Địa chỉ công ty</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Ví dụ: Hà Nội, Việt Nam" {...field} disabled={isLoading} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={form.control}
-                                name="website"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Website</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="https://congtycuaban.com" {...field} disabled={isLoading} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                      </FormControl>
+                      {showSuggestions && (
+                        <div className="absolute z-20 mt-2 w-full rounded-md border bg-background shadow-lg">
+                          {isFetchingSuggestions && (
+                            <div className="px-3 py-2 text-xs text-muted-foreground">{TEXT.suggestionLoading}</div>
+                          )}
+                          {!isFetchingSuggestions && suggestions.length === 0 && (
+                            <div className="px-3 py-2 text-xs text-muted-foreground">{TEXT.suggestionEmpty}</div>
+                          )}
+                          {!isFetchingSuggestions && suggestions.length > 0 && (
+                            <ul className="max-h-56 overflow-auto py-1">
+                              {suggestions.map((item) => (
+                                <li key={item.companyId}>
+                                  <button
+                                    type="button"
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={() => {
+                                      form.setValue('companyName', item.companyName, {
+                                        shouldValidate: true,
+                                        shouldDirty: true,
+                                      });
+                                      form.setValue('companyId', item.companyId, {
+                                        shouldValidate: true,
+                                        shouldDirty: true,
+                                      });
+                                      setSelectedCompanyName(item.companyName);
+                                      setShowSuggestions(false);
+                                    }}
+                                  >
+                                    {item.companyName}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                           <FormField
-                                control={form.control}
-                                name="position"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Chức vụ của bạn</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Ví dụ: Trưởng phòng Nhân sự" {...field} disabled={isLoading} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={form.control}
-                                name="phone"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Số điện thoại công ty</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Số điện thoại để ứng viên liên hệ" {...field} disabled={isLoading} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{TEXT.locationLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder={TEXT.locationPlaceholder} {...field} disabled={isLoading} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="website"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{TEXT.websiteLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder={TEXT.websitePlaceholder} {...field} disabled={isLoading} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="introduction"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{TEXT.introductionLabel}</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder={TEXT.introductionPlaceholder}
+                          {...field}
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="position"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{TEXT.positionLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder={TEXT.positionPlaceholder} {...field} disabled={isLoading} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{TEXT.phoneLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder={TEXT.phonePlaceholder} {...field} disabled={isLoading} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-                        <Button
-                            type="submit"
-                            className="w-full"
-                            size="lg"
-                            disabled={isLoading || form.formState.isSubmitting}
-                        >
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Gửi yêu cầu nâng cấp
-                        </Button>
-                    </form>
-                    </Form>
-                </CardContent>
-                <CardFooter className="text-center text-xs text-muted-foreground">
-                    Bằng việc tiếp tục, bạn đồng ý với Điều khoản dịch vụ và Chính sách quyền riêng tư của JobHub.
-                </CardFooter>
-            </Card>
-        </div>
+                <Button type="submit" className="w-full" size="lg" disabled={isLoading || form.formState.isSubmitting}
+                >
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {TEXT.submitLabel}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+          <CardFooter className="text-center text-xs text-muted-foreground">
+            {TEXT.footer}
+          </CardFooter>
+        </Card>
+      </div>
     </main>
   );
 }
-

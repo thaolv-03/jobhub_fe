@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, ApiError } from "@/lib/api-client";
+import { updateAccount } from "@/lib/auth-storage";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { CONSULTING_BUDGET_UNITS, CONSULTING_INDUSTRIES, CONSULTING_POSITIONS } from "@/lib/constants/consulting";
 import { Button } from "@/components/ui/button";
@@ -93,13 +94,42 @@ export default function ConsultingNeedPage() {
   );
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (!accessToken) {
       return;
     }
-    if (localStorage.getItem("jobhub_consulting_submitted") === "true") {
-      router.replace("/recruiter/dashboard/pending-approval");
-    }
-  }, [router]);
+    let mounted = true;
+    const verifyRecruiter = async () => {
+      try {
+        await apiRequest('/api/recruiters/me', { method: "GET", accessToken });
+        if (!mounted) return;
+        if (localStorage.getItem("jobhub_consulting_submitted") === "true") {
+          router.replace("/recruiter/dashboard/pending-approval");
+        }
+      } catch (error) {
+        const apiError = error as ApiError;
+        const isNotFound = apiError?.code === 404 || apiError?.status?.toLowerCase().includes("not_found");
+        if (!mounted) return;
+        if (isNotFound) {
+          localStorage.removeItem("jobhub_consulting_submitted");
+          localStorage.removeItem("jobhub_upgrade_company_source");
+          updateAccount<any>((current) => {
+            if (!current || !Array.isArray(current.roles)) return current;
+            return {
+              ...current,
+              roles: current.roles.filter(
+                (role: { roleName?: string }) => role.roleName !== "RECRUITER" && role.roleName !== "RECRUITER_PENDING"
+              ),
+            };
+          });
+          router.replace("/recruiter/dashboard/upgrade-recruiter");
+        }
+      }
+    };
+    void verifyRecruiter();
+    return () => {
+      mounted = false;
+    };
+  }, [accessToken, router]);
 
   const handleSubmit = async (values: ConsultationFormValues) => {
     if (!accessToken || isSubmittingRef.current || isSubmitting) {

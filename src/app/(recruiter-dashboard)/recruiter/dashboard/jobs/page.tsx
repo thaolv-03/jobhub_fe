@@ -119,28 +119,33 @@ export default function RecruiterJobsPage() {
     void fetchJobs();
   }, [accessToken]);
 
-  const handleCloseJob = (jobId: number, jobTitle: string) => {
+  const handleCloseJob = async (jobId: number, jobTitle: string) => {
     if (!accessToken) {
       return;
     }
-    setPostedJobs(jobs => jobs.map(job => job.jobId === jobId ? { ...job, status: 'CLOSED' } : job));
-    void apiRequest(`/api/jobs/${jobId}/status`, {
-      method: 'PATCH',
-      accessToken,
-      body: { status: "CLOSED" },
-    }).then(() => {
-      toast({
-        title: "Đóng tin tuyển dụng",
-        description: `Tin "${jobTitle}" đã được đóng.`,
+
+    const confirmed = typeof window === "undefined" ? true : window.confirm(`D?ng tin "${jobTitle}"?`);
+    if (!confirmed) return;
+
+    try {
+      await apiRequest(`/api/jobs/${jobId}/status`, {
+        method: 'PATCH',
+        accessToken,
+        body: { status: "CLOSED" },
       });
-    }).catch((error) => {
+      setPostedJobs(jobs => jobs.map(job => job.jobId === jobId ? { ...job, status: 'CLOSED' } : job));
+      toast({
+        title: "Đăng tin tuyển dụng",
+        description: `Tin "${jobTitle}" đã được đóng.`,
+      });
+    } catch (error) {
       const apiError = error as ApiError;
       toast({
         variant: "destructive",
-        title: "Cập nhật thất bại",
+        title: "Cập nhật thất bại",
         description: apiError.message || "Không thể cập nhật trạng thái tin.",
       });
-    });
+    }
   };
 
   return (
@@ -204,7 +209,9 @@ export default function RecruiterJobsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                            <DropdownMenuItem>Sửa</DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/recruiter/dashboard/jobs/${job.jobId}/edit`}>S?a</Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link href={`/recruiter/dashboard/applicants/${job.jobId}`}>Xem ứng viên</Link>
                             </DropdownMenuItem>

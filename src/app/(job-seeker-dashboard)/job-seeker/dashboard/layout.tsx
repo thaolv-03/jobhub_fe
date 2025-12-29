@@ -29,6 +29,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar";
+import { fetchJobSeekerProfile } from "@/lib/job-seeker-profile";
 import {
   Bookmark,
   ChevronsLeft,
@@ -158,7 +159,30 @@ export default function JobSeekerDashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, account, roles } = useAuth();
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(account?.avatarUrl ?? null);
+
+  React.useEffect(() => {
+    setAvatarUrl(account?.avatarUrl ?? null);
+  }, [account?.avatarUrl]);
+
+  React.useEffect(() => {
+    if (!roles.includes("JOB_SEEKER")) return;
+    let mounted = true;
+    const loadAvatar = async () => {
+      try {
+        const profile = await fetchJobSeekerProfile();
+        if (!mounted) return;
+        setAvatarUrl(profile?.avatarUrl ?? null);
+      } catch (error) {
+        if (!mounted) return;
+      }
+    };
+    void loadAvatar();
+    return () => {
+      mounted = false;
+    };
+  }, [roles]);
 
   const pageMeta = useMemo(() => {
     const exactMatch = pageMetaMap.find((item) => item.exact && item.match === pathname);
@@ -182,12 +206,15 @@ export default function JobSeekerDashboardLayout({
           showSidebar
           rightActions={
             <>
+              <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
+                <Link href="/">Về trang chủ</Link>
+              </Button>
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="" alt="Job seeker avatar" />
+                      <AvatarImage src={avatarUrl ?? ""} alt="Job seeker avatar" />
                       <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                   </Button>

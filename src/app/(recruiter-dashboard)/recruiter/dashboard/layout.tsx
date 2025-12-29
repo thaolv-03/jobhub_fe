@@ -1,11 +1,11 @@
 ﻿'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, ApiError } from "@/lib/api-client";
-import { getAuthFailed } from "@/lib/auth-storage";
+import { getAuthFailed, updateAccount } from "@/lib/auth-storage";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar";
 import { Navbar } from "@/components/layout/navbar";
+import { fetchRecruiterProfile } from "@/lib/recruiter-profile";
 import {
   Sidebar,
   SidebarContent,
@@ -43,6 +44,7 @@ import {
   PlusCircle,
   Sparkles,
   Users,
+  UserCircle2,
 } from "lucide-react";
 
 type NavItem = {
@@ -55,6 +57,7 @@ type NavItem = {
 
 const recruiterNavItems: NavItem[] = [
   { href: "/recruiter/dashboard", label: "Dashboard", icon: LayoutDashboard, match: "exact" },
+  { href: "/recruiter/dashboard/profile", label: "Hồ sơ", icon: UserCircle2, match: "startsWith" },
   { href: "/recruiter/dashboard/jobs", label: "Quản lý tin đăng", icon: Briefcase, match: "startsWith" },
   { href: "/recruiter/dashboard/post-job", label: "Đăng tin mới", icon: PlusCircle, match: "startsWith", action: "post-job" },
   { href: "/recruiter/dashboard/applicants", label: "Quản lý ứng viên", icon: Users, match: "startsWith" },
@@ -67,6 +70,11 @@ const pageMetaMap = [
     exact: true,
     title: "Tổng quan",
     subtitle: "Theo dõi hiệu suất tuyển dụng và hoạt động mới nhất.",
+  },
+  {
+    match: "/recruiter/dashboard/profile",
+    title: "Hồ sơ recruiter",
+    subtitle: "Cập nhật ảnh đại diện và thông tin hồ sơ.",
   },
   {
     match: "/recruiter/dashboard/jobs",
@@ -100,7 +108,7 @@ const pageMetaMap = [
   },
   {
     match: "/recruiter/dashboard/upgrade-recruiter",
-    title: "Nâng cấp tài khoản",
+    title: "Đăng ký tài khoản",
     subtitle: "Trở thành recruiter để sử dụng đầy đủ tính năng.",
   },
 ];
@@ -111,7 +119,16 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [recruiterStatus, setRecruiterStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
   const [isStatusLoading, setIsStatusLoading] = useState(false);
-  const lastStatusKeyRef = useRef<string | null>(null);
+  const [isRecruiterMissing, setIsRecruiterMissing] = useState(false);
+  const clearRecruiterRole = () => {
+    updateAccount<any>((current) => {
+      if (!current || !Array.isArray(current.roles)) return current;
+      const nextRoles = current.roles.filter(
+        (role: { roleName?: string }) => role.roleName !== "RECRUITER" && role.roleName !== "RECRUITER_PENDING"
+      );
+      return { ...current, roles: nextRoles };
+    });
+  };
 
   useEffect(() => {
     if (isLoading) {
@@ -130,25 +147,44 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const statusKey = `${accessToken}:${roles.join(',')}`;
-    if (lastStatusKeyRef.current === statusKey) {
-      return;
-    }
-    lastStatusKeyRef.current = statusKey;
-
     const fetchStatus = async () => {
       try {
         setIsStatusLoading(true);
-        const response = await apiRequest<{ status: 'PENDING' | 'APPROVED' | 'REJECTED' }>('/api/recruiters/me', {
+        const response = await apiRequest<{ status: 'PENDING' | 'APPROVED' | 'REJECTED'; companyId?: number | null }>(
+          '/api/recruiters/me',
+          {
           method: 'GET',
           accessToken,
         });
+        const isMissingCompany = !response.data?.companyId;
+        setIsRecruiterMissing(isMissingCompany);
+        if (isMissingCompany) {
+          try {
+            localStorage.removeItem('jobhub_consulting_submitted');
+            localStorage.removeItem('jobhub_upgrade_company_source');
+            clearRecruiterRole();
+          } catch (storageError) {
+            console.error('Failed to reset recruiter upgrade cache', storageError);
+          }
+        }
         setRecruiterStatus(response.data?.status ?? null);
       } catch (error) {
         const apiError = error as ApiError;
-        console.error('Failed to fetch recruiter status', apiError.message);
-        setRecruiterStatus(null);
-        lastStatusKeyRef.current = null;
+        const isNotFound = apiError?.code === 404 || apiError?.status?.toLowerCase().includes('not_found');
+        if (isNotFound) {
+          setIsRecruiterMissing(true);
+          setRecruiterStatus(null);
+          try {
+            localStorage.removeItem('jobhub_consulting_submitted');
+            localStorage.removeItem('jobhub_upgrade_company_source');
+            clearRecruiterRole();
+          } catch (storageError) {
+            console.error('Failed to reset recruiter upgrade cache', storageError);
+          }
+        } else {
+          console.error('Failed to fetch recruiter status', apiError.message);
+          setRecruiterStatus(null);
+        }
       } finally {
         setIsStatusLoading(false);
       }
@@ -159,6 +195,13 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isLoading || isStatusLoading) {
+      return;
+    }
+
+    if (isRecruiterMissing) {
+      if (pathname !== '/recruiter/dashboard/upgrade-recruiter') {
+        router.replace('/recruiter/dashboard/upgrade-recruiter');
+      }
       return;
     }
 
@@ -209,7 +252,7 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
         router.replace('/recruiter/dashboard/upgrade-recruiter');
       }
     }
-  }, [isLoading, isStatusLoading, recruiterStatus, roles, pathname, router]);
+  }, [isLoading, isStatusLoading, recruiterStatus, roles, pathname, router, isRecruiterMissing]);
 
   if (isLoading || isStatusLoading) {
     return (
@@ -217,6 +260,13 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
         <Skeleton className="h-[360px] w-full" />
       </div>
     );
+  }
+
+  if (isRecruiterMissing) {
+    if (pathname !== '/recruiter/dashboard/upgrade-recruiter') {
+      return null;
+    }
+    return <>{children}</>;
   }
 
   const isRecruiter = roles.includes('RECRUITER');
@@ -354,14 +404,54 @@ export default function RecruiterDashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname();
-  const { logout, roles } = useAuth();
+  const { logout, roles, account } = useAuth();
   const router = useRouter();
-  const showSidebar = roles.includes('RECRUITER');
   const showSiteNavbar = [
     '/recruiter/dashboard/upgrade-recruiter',
     '/recruiter/dashboard/consulting-need',
     '/recruiter/dashboard/pending-approval',
-  ].includes(pathname);\r\n\r\n  useEffect(() => {\r\n    if (pathname !== '/recruiter/dashboard') {\r\n      return;\r\n    }\r\n    if (!roles.includes('RECRUITER')) {\r\n      return;\r\n    }\r\n    if (typeof window === 'undefined') {\r\n      return;\r\n    }\r\n    const intent = sessionStorage.getItem('jobhub_post_job_intent');\r\n    if (intent !== 'true') {\r\n      return;\r\n    }\r\n    sessionStorage.removeItem('jobhub_post_job_intent');\r\n    router.replace('/recruiter/dashboard/post-job');\r\n  }, [pathname, roles, router]);
+  ].includes(pathname);
+  const showSidebar = roles.includes('RECRUITER') && !showSiteNavbar;
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(account?.avatarUrl ?? null);
+
+  React.useEffect(() => {
+    setAvatarUrl(account?.avatarUrl ?? null);
+  }, [account?.avatarUrl]);
+
+  React.useEffect(() => {
+    if (!roles.includes('RECRUITER')) return;
+    let mounted = true;
+    const loadAvatar = async () => {
+      try {
+        const profile = await fetchRecruiterProfile();
+        if (!mounted) return;
+        setAvatarUrl(profile?.avatarUrl ?? null);
+      } catch (error) {
+        if (!mounted) return;
+      }
+    };
+    void loadAvatar();
+    return () => {
+      mounted = false;
+    };
+  }, [roles]);
+  useEffect(() => {
+    if (pathname !== '/recruiter/dashboard') {
+      return;
+    }
+    if (!roles.includes('RECRUITER')) {
+      return;
+    }
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const intent = sessionStorage.getItem('jobhub_post_job_intent');
+    if (intent !== 'true') {
+      return;
+    }
+    sessionStorage.removeItem('jobhub_post_job_intent');
+    router.replace('/recruiter/dashboard/post-job');
+  }, [pathname, roles, router]);
 
   const handlePostJobClick = () => {
     if (roles.includes('RECRUITER')) {
@@ -405,12 +495,15 @@ export default function RecruiterDashboardLayout({
             }
             rightActions={
               <>
+                <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
+                  <Link href="/">Về trang chủ</Link>
+                </Button>
                 <ThemeToggle />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="rounded-full">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="" alt="Recruiter avatar" />
+                        <AvatarImage src={avatarUrl || undefined} alt="Recruiter avatar" />
                         <AvatarFallback>RH</AvatarFallback>
                       </Avatar>
                     </Button>
@@ -435,6 +528,8 @@ export default function RecruiterDashboardLayout({
     </SidebarProvider>
   );
 }
+
+
 
 
 

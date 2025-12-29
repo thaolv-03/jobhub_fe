@@ -11,7 +11,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AdminTableFooter } from "@/components/admin/admin-table-footer";
-import { getAccessToken } from "@/lib/auth-storage";
 import { fetchRecruiterDocuments, RecruiterDocument, updateRecruiterStatus } from "@/lib/admin-recruiter";
 import {
   AccountStatus,
@@ -20,6 +19,7 @@ import {
   searchRecruiters,
   updateRecruiterAccountStatus,
 } from "@/lib/admin-users";
+import { getAccessToken } from "@/lib/auth-storage";
 
 const PAGE_SIZE = 8;
 
@@ -93,7 +93,8 @@ export default function ManageRecruitersPage() {
   const [documents, setDocuments] = React.useState<RecruiterDocument[]>([]);
 
   const loadRecruiters = React.useCallback(async () => {
-    if (!getAccessToken()) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
       setIsLoading(false);
       return;
     }
@@ -147,10 +148,11 @@ export default function ManageRecruitersPage() {
   };
 
   const handleRecruiterStatusUpdate = async (recruiterId: number, status: RecruiterAdminDetail["status"]) => {
-    if (!getAccessToken()) return;
+    const accessToken = getAccessToken();
+    if (!accessToken) return;
     try {
       setUpdatingRecruiterId(recruiterId);
-      await updateRecruiterStatus(recruiterId, status);
+      await updateRecruiterStatus(accessToken, recruiterId, status);
       await loadRecruiters();
       toast({ title: "Recruiter status updated" });
     } catch (error) {
@@ -165,11 +167,12 @@ export default function ManageRecruitersPage() {
   };
 
   const handleViewDocuments = async (recruiter: RecruiterAdminDetail) => {
-    if (!getAccessToken()) return;
+    const accessToken = getAccessToken();
+    if (!accessToken) return;
     setSelectedRecruiter(recruiter);
     setDocsLoading(true);
     try {
-      const docs = await fetchRecruiterDocuments(recruiter.recruiterId);
+      const docs = await fetchRecruiterDocuments(accessToken, recruiter.recruiterId);
       setDocuments(docs);
       setIsDocsOpen(true);
     } catch (error) {

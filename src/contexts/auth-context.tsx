@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Account, getAccount, getAccessToken, clearAuthData, login as apiLogin, LoginRequest, logout as apiLogout, RoleName, upgradeToRecruiter as apiUpgradeToRecruiter, UpgradeRecruiterRequest } from '@/lib/auth';
+import { Account, getAccount, getAccessToken, clearAuthData, login as apiLogin, googleLogin as apiGoogleLogin, LoginRequest, GoogleLoginRequest, logout as apiLogout, RoleName, upgradeToRecruiter as apiUpgradeToRecruiter, UpgradeRecruiterRequest, UpgradeRecruiterResponse } from '@/lib/auth';
 import { usePathname, useRouter } from 'next/navigation';
 
 interface AuthContextType {
@@ -12,9 +12,10 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<Account>;
+  googleLogin: (payload: GoogleLoginRequest) => Promise<Account>;
   logout: () => Promise<void>;
   reload: () => void;
-  upgradeToRecruiter: (payload: UpgradeRecruiterRequest) => Promise<void>;
+  upgradeToRecruiter: (payload: UpgradeRecruiterRequest) => Promise<UpgradeRecruiterResponse>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,14 +58,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     window.addEventListener('storage', handleStorageChange);
+    const handleAuthChange = () => {
+      checkAuthState();
+    };
+    window.addEventListener("jobhub-auth-change", handleAuthChange);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener("jobhub-auth-change", handleAuthChange);
     };
   }, [checkAuthState]);
 
   const handleLogin = async (credentials: LoginRequest): Promise<Account> => {
     const account = await apiLogin(credentials);
     checkAuthState(); // Reload state from storage to ensure it's fresh
+    return account;
+  };
+
+  const handleGoogleLogin = async (payload: GoogleLoginRequest): Promise<Account> => {
+    const account = await apiGoogleLogin(payload);
+    checkAuthState();
     return account;
   };
 
@@ -85,8 +97,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const handleUpgrade = async (payload: UpgradeRecruiterRequest) => {
-    await apiUpgradeToRecruiter(payload);
+    const response = await apiUpgradeToRecruiter(payload);
     checkAuthState(); // Reload state to get new roles
+    return response;
   };
   
   const roles = account?.roles.map(r => r.roleName) || [];
@@ -100,6 +113,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated: !!account && !!accessToken,
         isLoading,
         login: handleLogin,
+        googleLogin: handleGoogleLogin,
         logout: handleLogout,
         reload: checkAuthState,
         upgradeToRecruiter: handleUpgrade,

@@ -97,20 +97,28 @@ export default function ApplicantsDetailPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Application ID</TableHead>
-                  <TableHead className="text-center">Ứng viên</TableHead>
-                  <TableHead className="text-center">Ngày nộp</TableHead>
-                  <TableHead className="text-center">Trạng thái</TableHead>
+                  <TableHead>No.</TableHead>
+                  <TableHead className="text-center">Ung vien</TableHead>
+                  <TableHead className="text-center">Ngay nop</TableHead>
+                  <TableHead className="text-center">Trang thai</TableHead>
+                  <TableHead className="text-center">Hanh dong</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {applications.map((item) => (
+                {applications.map((item, index) => (
                   <TableRow key={item.applicationId}>
-                    <TableCell className="font-medium">{item.applicationId}</TableCell>
+                    <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell className="text-center">#{item.jobSeekerId}</TableCell>
                     <TableCell className="text-center text-muted-foreground">{formatDate(item.appliedAt)}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant="outline">{item.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/recruiter/dashboard/applicants/${jobId}/${item.jobSeekerId}`}>
+                          Xem h? s?
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
