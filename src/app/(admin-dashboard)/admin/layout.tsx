@@ -49,31 +49,31 @@ type NavItem = {
 };
 
 const adminNavItems: NavItem[] = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, match: "exact" },
-  { href: "/admin/dashboard#pending-recruiters", label: "Recruiter Approvals", icon: Users, match: "startsWith" },
-  { href: "/admin/manager-job-seekers", label: "Job seekers", icon: UserCog, match: "startsWith" },
-  { href: "/admin/manager-recruiters", label: "Recruiters", icon: Users, match: "startsWith" },
-  { href: "/admin/dashboard#settings", label: "Settings", icon: Settings, match: "startsWith" },
+  { href: "/admin/dashboard", label: "Tổng quan", icon: LayoutDashboard, match: "exact" },
+  { href: "/admin/dashboard#pending-recruiters", label: "Duyệt nhà tuyển dụng", icon: Users, match: "startsWith" },
+  { href: "/admin/manager-job-seekers", label: "Quản lý ứng viên", icon: UserCog, match: "startsWith" },
+  { href: "/admin/manager-recruiters", label: "Quản lý nhà tuyển dụng", icon: Users, match: "startsWith" },
+  { href: "/admin/dashboard#settings", label: "Cài đặt", icon: Settings, match: "startsWith" },
 ];
 
 const pageMetaMap = [
   {
     match: "/admin/dashboard",
     exact: true,
-    title: "Admin Overview",
-    subtitle: "Monitor approvals, activity, and platform health.",
+    title: "Tổng quan quản trị",
+    subtitle: "Theo dõi phê duyệt, hoạt động và tình trạng hệ thống.",
   },
   {
     match: "/admin/manager-job-seekers",
     exact: true,
-    title: "Manage job seekers",
-    subtitle: "Review job seeker profiles and CVs.",
+    title: "Quản lý ứng viên",
+    subtitle: "Xem hồ sơ và CV của ứng viên.",
   },
   {
     match: "/admin/manager-recruiters",
     exact: true,
-    title: "Manage recruiters",
-    subtitle: "Approve and monitor recruiter accounts.",
+    title: "Quản lý nhà tuyển dụng",
+    subtitle: "Duyệt và theo dõi tài khoản nhà tuyển dụng.",
   },
 ];
 
@@ -115,7 +115,7 @@ function SidebarCollapseButton() {
     >
       {state === "expanded" ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
       <span className="text-xs font-medium group-data-[collapsible=icon]:hidden">
-        {state === "expanded" ? "Collapse sidebar" : "Expand sidebar"}
+        {state === "expanded" ? "Thu gọn sidebar" : "Mở rộng sidebar"}
       </span>
     </Button>
   );
@@ -157,7 +157,7 @@ function AdminSidebar({
           </span>
           <div className="leading-tight group-data-[collapsible=icon]:hidden">
             <p className="text-base font-semibold">JobHub</p>
-            <p className="text-xs text-muted-foreground">Admin Dashboard</p>
+            <p className="text-xs text-muted-foreground">Bảng điều khiển admin</p>
           </div>
         </Link>
       </SidebarHeader>
@@ -292,4 +292,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </SidebarProvider>
   );
 }
-

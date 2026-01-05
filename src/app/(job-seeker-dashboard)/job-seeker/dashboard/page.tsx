@@ -1,11 +1,9 @@
-﻿"use client";
+"use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,8 +18,10 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { CvOnlineDialog, buildCvOnlineDefaults, buildParsedDataFromValues, type CvOnlineFormValues, type CvOnlineMeta } from "@/components/job-seeker/cv-online-dialog";
 import {
   fetchJobSeekerProfile,
+  deleteJobSeekerCv,
   parseJobSeekerCv,
   fetchLatestCvOnline,
   saveCvOnline,
@@ -31,9 +31,10 @@ import {
 } from "@/lib/job-seeker-profile";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api-types";
-import { recommendJobs, searchJobs, type Job } from "@/lib/jobs";
+import { recommendJobs, type Job } from "@/lib/jobs";
 import { updateAccount } from "@/lib/auth-storage";
 import { createJobSeekerSkill, deleteJobSeekerSkill, listJobSeekerSkills, type JobSeekerSkill } from "@/lib/job-seeker-skills";
+import { JOB_TAGS } from "@/lib/job-form-data";
 
 const profileSchema = z.object({
   name: z.string().min(1, { message: "Họ và tên không được để trống." }),
@@ -55,79 +56,6 @@ const fallbackRecommendedJobs = [
   { id: 5, title: "Kỹ sư DevOps", company: "Tiki", location: "Hà Nội", salary: "Trên $2000", logoId: "company-logo-tiki" },
 ];
 
-const CV_ONLINE_FIELDS = [
-  { id: "name", label: "Name", key: "NAME" },
-  { id: "emailAddress", label: "Email address", key: "EMAIL ADDRESS" },
-  { id: "contact", label: "Contact", key: "CONTACT" },
-  { id: "location", label: "Location", key: "LOCATION" },
-  { id: "linkedinLink", label: "LinkedIn link", key: "LINKEDIN LINK" },
-  { id: "designation", label: "Designation", key: "DESIGNATION" },
-  { id: "workedAs", label: "Worked as", key: "WORKED AS", multi: true },
-  { id: "companiesWorkedAt", label: "Companies worked at", key: "COMPANIES WORKED AT", multi: true },
-  { id: "yearsOfExperience", label: "Years of experience", key: "YEARS OF EXPERIENCE" },
-  { id: "skills", label: "Skills", key: "SKILLS", multi: true },
-  { id: "awards", label: "Awards", key: "AWARDS", multi: true },
-  { id: "certification", label: "Certification", key: "CERTIFICATION", multi: true },
-  { id: "language", label: "Language", key: "LANGUAGE", multi: true },
-  { id: "degree", label: "Degree", key: "DEGREE" },
-  { id: "collegeName", label: "College name", key: "COLLEGE NAME" },
-  { id: "university", label: "University", key: "UNIVERSITY" },
-  { id: "yearOfGraduation", label: "Year of graduation", key: "YEAR OF GRADUATION" },
-] as const;
-
-type CvOnlineFormValues = {
-  [K in typeof CV_ONLINE_FIELDS[number]["id"]]: string;
-};
-
-
-const normalizeParsedValue = (value: unknown) => {
-  if (value == null) return "";
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item ?? "").trim()).filter(Boolean).join("\n");
-  }
-  if (typeof value === "object") {
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return "";
-    }
-  }
-  return String(value).trim();
-};
-
-const getParsedValue = (parsedData: Record<string, unknown> | null | undefined, key: string) => {
-  if (!parsedData) return "";
-  const match = Object.keys(parsedData).find((item) => item.toLowerCase() === key.toLowerCase());
-  if (!match) return "";
-  return normalizeParsedValue(parsedData[match]);
-};
-
-const buildCvOnlineDefaults = (parsedData?: Record<string, unknown> | null) => {
-  return CV_ONLINE_FIELDS.reduce((acc, field) => {
-    acc[field.id] = getParsedValue(parsedData, field.key);
-    return acc;
-  }, {} as CvOnlineFormValues);
-};
-
-const parseListValue = (value: string) => {
-  return value
-    .split(/\r?\n|,/g)
-    .map((item) => item.trim())
-    .filter(Boolean);
-};
-
-const buildParsedDataFromValues = (values: CvOnlineFormValues) => {
-  return CV_ONLINE_FIELDS.reduce((acc, field) => {
-    const raw = values[field.id]?.trim() ?? "";
-    if (field.multi) {
-      acc[field.key] = raw ? parseListValue(raw) : [];
-    } else {
-      acc[field.key] = raw;
-    }
-    return acc;
-  }, {} as Record<string, unknown>);
-};
-
 export default function JobSeekerDashboardPage() {
   const { toast } = useToast();
   const { account, reload } = useAuth();
@@ -137,17 +65,19 @@ export default function JobSeekerDashboardPage() {
   const [isAvatarUploading, setIsAvatarUploading] = React.useState(false);
   const [uploadedCvs, setUploadedCvs] = React.useState<string[]>([]);
   const [cvUrl, setCvUrl] = React.useState<string | null>(null);
-  const [isCvUploading, setIsCvUploading] = React.useState(false);
+  const [isCvOpening, setIsCvOpening] = React.useState(false);
   const [isProfileSaving, setIsProfileSaving] = React.useState(false);
   const [skillOptions, setSkillOptions] = React.useState<string[]>([]);
   const [skills, setSkills] = React.useState<JobSeekerSkill[]>([]);
   const [initialSkills, setInitialSkills] = React.useState<JobSeekerSkill[]>([]);
   const [selectedSkill, setSelectedSkill] = React.useState("");
+  const [skillSearch, setSkillSearch] = React.useState("");
   const [customSkill, setCustomSkill] = React.useState("");
   const [recommendedJobs, setRecommendedJobs] = React.useState<Job[]>([]);
   const [isRecommendedLoading, setIsRecommendedLoading] = React.useState(false);
   const [cvOnlineFileName, setCvOnlineFileName] = React.useState<string | null>(null);
-  const [cvOnlineMeta, setCvOnlineMeta] = React.useState<{ fileKey: string; rawText: string; parsedData: Record<string, unknown> } | null>(null);
+  const [cvOnlineFile, setCvOnlineFile] = React.useState<File | null>(null);
+  const [cvOnlineMeta, setCvOnlineMeta] = React.useState<CvOnlineMeta | null>(null);
   const [isCvParsing, setIsCvParsing] = React.useState(false);
   const [isCvOnlineSaving, setIsCvOnlineSaving] = React.useState(false);
   const [isCvOnlineLoading, setIsCvOnlineLoading] = React.useState(false);
@@ -184,7 +114,7 @@ export default function JobSeekerDashboardPage() {
         skills: "",
       });
       setCvUrl(profile?.cvUrl ?? null);
-      setUploadedCvs(profile?.cvUrl ? ["CV đã tải lên"] : []);
+      setUploadedCvs(profile?.cvUrl ? ["CV đã tải lên"] : []);
       setAvatarUrl(profile?.avatarUrl ?? null);
       updateAccount((current) => {
         if (!current || typeof current !== "object") return current;
@@ -227,18 +157,15 @@ export default function JobSeekerDashboardPage() {
     let mounted = true;
     const loadSkillOptions = async () => {
       try {
-        const data = await searchJobs({
-          pagination: { page: 0, pageSize: 100 },
-          sortedBy: [{ field: "createAt", sort: "DESC" }],
-        });
-        const tagSet = new Set<string>();
-        data.items.forEach((job) => {
-          (job.tags ?? []).forEach((tag) => {
-            if (tag) tagSet.add(tag);
-          });
-        });
+        const names = Array.from(
+          new Set(
+            JOB_TAGS
+              .map((tag) => tag.name?.trim())
+              .filter((name): name is string => Boolean(name))
+          )
+        ).sort((a, b) => a.localeCompare(b));
         if (!mounted) return;
-        setSkillOptions(Array.from(tagSet).sort());
+        setSkillOptions(names);
       } catch (error) {
         if (!mounted) return;
         setSkillOptions([]);
@@ -361,15 +288,16 @@ export default function JobSeekerDashboardPage() {
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     const errorMessage = validateAvatarFile(file);
     if (errorMessage) {
       toast({
-        title: "L?i",
+        title: "Lỗi",
         description: errorMessage,
         variant: "destructive",
       });
-      event.target.value = "";
       setAvatarFile(null);
       setAvatarPreviewUrl(null);
       return;
@@ -390,8 +318,8 @@ export default function JobSeekerDashboardPage() {
   const handleAvatarUpload = async () => {
     if (!avatarFile) {
       toast({
-        title: "L?i",
-        description: "Vui l?ng ch?n anh d? t?i l?n.",
+        title: "Lỗi",
+        description: "Vui lòng chọn ảnh để tải lên.",
         variant: "destructive",
       });
       return;
@@ -399,7 +327,7 @@ export default function JobSeekerDashboardPage() {
     const errorMessage = validateAvatarFile(avatarFile);
     if (errorMessage) {
       toast({
-        title: "L?i",
+        title: "Lỗi",
         description: errorMessage,
         variant: "destructive",
       });
@@ -428,50 +356,50 @@ export default function JobSeekerDashboardPage() {
     }
   };
 
-  const handleCvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.type !== "application/pdf") {
-      toast({ title: "Lỗi", description: "Vui lòng chỉ tải lên file PDF.", variant: "destructive" });
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "Lỗi", description: "Kích thước file không được vượt quá 10MB.", variant: "destructive" });
-      return;
-    }
-    if (uploadedCvs.includes(file.name)) {
-      toast({ title: "Lỗi", description: "Tên file đã tồn tại. Vui lòng đổi tên và thử lại.", variant: "destructive" });
-      return;
-    }
-
+  const openCv = async () => {
+    if (isCvOpening) return;
     try {
-      setIsCvUploading(true);
-      const updated = await uploadJobSeekerCv(file);
-      setCvUrl(updated.cvUrl ?? null);
-      setUploadedCvs([file.name]);
-      toast({ title: "Thành công", description: `Đã tải lên CV: ${file.name}` });
+      setIsCvOpening(true);
+      const profile = await fetchJobSeekerProfile();
+      let url = profile?.cvUrl ?? null;
+      if (!url) {
+        const latest = await fetchLatestCvOnline();
+        url = latest?.fileUrl ?? null;
+      }
+      if (!url) {
+        toast({ title: "Không có CV", description: "Vui lòng tải CV trước.", variant: "destructive" });
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       const apiError = error instanceof ApiError ? error : null;
       toast({
-        title: "Tải CV thất bại",
+        title: "Không mở được CV",
         description: apiError?.message ?? "Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
-      setIsCvUploading(false);
+      setIsCvOpening(false);
     }
   };
 
-  const removeCv = (cvName: string) => {
-    setUploadedCvs(uploadedCvs.filter((cv) => cv !== cvName));
-    toast({ title: "Đã xóa CV.", description: `${cvName} đã được xóa.`, variant: "destructive" });
+  const removeCv = async (cvName: string) => {
+    try {
+      await deleteJobSeekerCv();
+      setUploadedCvs((current) => current.filter((cv) => cv !== cvName));
+      setCvUrl(null);
+      toast({ title: "Đã xóa CV.", description: `${cvName} đã được xóa.`, variant: "destructive" });
+    } catch (error) {
+      const apiError = error instanceof ApiError ? error : null;
+      toast({
+        title: "Xóa CV thất bại",
+        description: apiError?.message ?? "Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleCvParseUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const handleCvParseUpload = async (file: File) => {
     const allowedTypes = [
       "application/pdf",
       "application/msword",
@@ -481,13 +409,11 @@ export default function JobSeekerDashboardPage() {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      toast({ title: "Loi", description: "Chi ho tro PDF, DOC, DOCX, PNG, JPG.", variant: "destructive" });
-      event.target.value = "";
+      toast({ title: "Lỗi", description: "Chỉ hỗ trợ PDF, DOC, DOCX, PNG, JPG.", variant: "destructive" });
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "Loi", description: "Kich thuoc file vuot qua 10MB.", variant: "destructive" });
-      event.target.value = "";
+      toast({ title: "Lỗi", description: "Kích thước file vượt quá 10MB.", variant: "destructive" });
       return;
     }
 
@@ -497,29 +423,44 @@ export default function JobSeekerDashboardPage() {
       const parsedData = response.parsedData && typeof response.parsedData === "object" ? response.parsedData : {};
       setCvOnlineMeta({ fileKey: response.fileKey, rawText: response.rawText, parsedData });
       setCvOnlineFileName(file.name);
+      setCvOnlineFile(file);
       cvOnlineForm.reset(buildCvOnlineDefaults(parsedData));
-      toast({ title: "Thanh cong", description: "Da phan tich CV. Vui long kiem tra va chinh sua." });
+      toast({ title: "Thành công", description: "Đã phân tích CV. Vui lòng kiểm tra và chỉnh sửa." });
     } catch (error) {
       const apiError = error instanceof ApiError ? error : null;
       toast({
-        title: "Phan tich CV that bai",
-        description: apiError?.message ?? "Vui long thu lai sau.",
+        title: "Phân tích CV thất bại",
+        description: apiError?.message ?? "Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
       setIsCvParsing(false);
-      event.target.value = "";
-    }
+      }
   };
 
   const handleCvOnlineSave = async (values: CvOnlineFormValues) => {
     if (!cvOnlineMeta?.fileKey || !cvOnlineMeta?.rawText) {
-      toast({ title: "Chua co CV", description: "Vui long tai CV de phan tich truoc.", variant: "destructive" });
+      toast({ title: "Chưa có CV", description: "Vui lòng tải CV để phân tích trước.", variant: "destructive" });
       return;
     }
 
     try {
       setIsCvOnlineSaving(true);
+      if (cvOnlineFile) {
+        try {
+          const updatedProfile = await uploadJobSeekerCv(cvOnlineFile);
+          setCvUrl(updatedProfile.cvUrl ?? null);
+          setUploadedCvs(updatedProfile.cvUrl ? ["CV đã tải lên"] : []);
+        } catch (uploadError) {
+          const apiError = uploadError instanceof ApiError ? uploadError : null;
+          toast({
+            title: "Tải CV thất bại",
+            description: apiError?.message ?? "Vui lòng thử lại sau.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
       const parsedData = buildParsedDataFromValues(values);
       await saveCvOnline({
         fileKey: cvOnlineMeta.fileKey,
@@ -527,12 +468,13 @@ export default function JobSeekerDashboardPage() {
         parsedData,
       });
       setCvOnlineMeta((current) => (current ? { ...current, parsedData } : current));
-      toast({ title: "Da luu CV online", description: "Thong tin CV online da duoc luu." });
+      setCvOnlineFile(null);
+      toast({ title: "Đã lưu CV online", description: "Thông tin CV online đã được lưu." });
     } catch (error) {
       const apiError = error instanceof ApiError ? error : null;
       toast({
-        title: "Luu CV online that bai",
-        description: apiError?.message ?? "Vui long thu lai sau.",
+        title: "Lưu CV online thất bại",
+        description: apiError?.message ?? "Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
@@ -556,8 +498,8 @@ export default function JobSeekerDashboardPage() {
     } catch (error) {
       const apiError = error instanceof ApiError ? error : null;
       toast({
-        title: "Khong tai duoc CV Online",
-        description: apiError?.message ?? "Vui long thu lai sau.",
+        title: "Không tải được CV Online",
+        description: apiError?.message ?? "Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
@@ -571,6 +513,7 @@ export default function JobSeekerDashboardPage() {
       void loadLatestCvOnline();
       return;
     }
+    setCvOnlineFile(null);
     cvOnlineForm.reset(cvOnlineMeta ? buildCvOnlineDefaults(cvOnlineMeta.parsedData) : buildCvOnlineDefaults(null));
   };
 
@@ -715,41 +658,92 @@ export default function JobSeekerDashboardPage() {
                       <FormItem>
                         <FormLabel>Kỹ năng</FormLabel>
                         <div className="grid gap-3">
+                          <Input
+                            value={skillSearch}
+                            onChange={(event) => setSkillSearch(event.target.value)}
+                            placeholder="Search skills..."
+                          />
+                          {(() => {
+                            const normalizedQuery = skillSearch.trim().toLowerCase();
+                            if (!normalizedQuery) return null;
+                            const availableOptions = skillOptions.filter(
+                              (option) =>
+                                !skills.some(
+                                  (skill) => normalizeSkill(skill.skillName) === normalizeSkill(option)
+                                )
+                            );
+                            const filteredOptions = availableOptions.filter((option) =>
+                              option.toLowerCase().includes(normalizedQuery)
+                            );
+                            return (
+                              <div className="mt-2 max-h-56 overflow-auto rounded-md border bg-white p-1 shadow-sm dark:border-slate-700/70 dark:bg-slate-900">
+                                {filteredOptions.length === 0 ? (
+                                  <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
+                                    No skills found
+                                  </div>
+                                ) : (
+                                  filteredOptions.map((option) => (
+                                    <button
+                                      key={option}
+                                      type="button"
+                                      className="flex w-full items-center rounded-sm px-3 py-2 text-left text-sm text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+                                      onClick={() => {
+                                        addSkillByName(option);
+                                        setSkillSearch("");
+                                      }}
+                                    >
+                                      {option}
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            );
+                          })()}
                           <Select
                             value={selectedSkill}
                             onValueChange={(value) => {
                               setSelectedSkill(value);
                               addSkillByName(value);
+                              setSkillSearch("");
                             }}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Chọn kỹ năng có sẵn" />
+                              <SelectValue placeholder="Choose available skills" />
                             </SelectTrigger>
                             <SelectContent>
-                              {skillOptions.length === 0 ? (
-                                <SelectItem value="__empty" disabled>
-                                  Chưa có kỹ năng nào
-                                </SelectItem>
-                              ) : (
-                                skillOptions
-                                  .filter(
-                                    (option) =>
-                                      !skills.some(
-                                        (skill) => normalizeSkill(skill.skillName) === normalizeSkill(option)
-                                      )
-                                  )
-                                  .map((option) => (
-                                    <SelectItem key={option} value={option}>
-                                      {option}
+                              {(() => {
+                                if (skillOptions.length === 0) {
+                                  return (
+                                    <SelectItem value="__empty" disabled>
+                                      No skills available
                                     </SelectItem>
-                                  ))
-                              )}
+                                  );
+                                }
+                                const availableOptions = skillOptions.filter(
+                                  (option) =>
+                                    !skills.some(
+                                      (skill) => normalizeSkill(skill.skillName) === normalizeSkill(option)
+                                    )
+                                );
+                                if (availableOptions.length === 0) {
+                                  return (
+                                    <SelectItem value="__empty" disabled>
+                                      No skills found
+                                    </SelectItem>
+                                  );
+                                }
+                                return availableOptions.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ));
+                              })()}
                             </SelectContent>
                           </Select>
 
                           <div className="flex flex-col gap-2 sm:flex-row">
                             <Input
-                              placeholder="Thêm kỹ năng mới..."
+                              placeholder="Add a new skill..."
                               value={customSkill}
                               onChange={(event) => setCustomSkill(event.target.value)}
                             />
@@ -759,7 +753,7 @@ export default function JobSeekerDashboardPage() {
                               
                               onClick={() => addSkillByName(customSkill)}
                             >
-                              Thêm
+                              Add
                             </Button>
                           </div>
 
@@ -799,417 +793,23 @@ export default function JobSeekerDashboardPage() {
                 <CardTitle>Quản lý CV</CardTitle>
                 <CardDescription>Tải lên và quản lý các CV của bạn để sẵn sàng ứng tuyển.</CardDescription>
               </div>
-              <Dialog open={isCvOnlineOpen} onOpenChange={handleCvOnlineDialogChange}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">CV Online (AI)</Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[860px] max-h-[80vh] overflow-y-auto p-0">
-                  <div className="sticky top-0 z-10 border-b bg-white px-6 py-3 pr-12 relative">
-                    <DialogHeader className="items-center text-center">
-                      <DialogTitle className="text-xl">CV Online (AI)</DialogTitle>
-                      <DialogDescription className="text-center">Upload CV de phan tich va chinh sua truoc khi luu.</DialogDescription>
-                    </DialogHeader>
-                    <DialogClose className="absolute right-4 top-3 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Close</span>
-                    </DialogClose>
-                  </div>
-                  <div className="grid gap-6 px-6 pb-6">
-                    <div className="rounded-lg border bg-slate-50/60 p-4">
-                      <Label htmlFor="cv-online-file" className="text-sm font-semibold">Upload CV de phan tich</Label>
-                      <Input
-                        id="cv-online-file"
-                        type="file"
-                        accept=".pdf,.doc,.docx,image/png,image/jpeg"
-                        onChange={handleCvParseUpload}
-                        disabled={isCvParsing}
-                        className="mt-2"
-                      />
-                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                        <span>PDF, DOC, DOCX, PNG, JPG (toi da 10MB).</span>
-                        {isCvParsing ? (
-                          <span className="inline-flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Dang phan tich CV...
-                          </span>
-                        ) : null}
-                        {isCvOnlineLoading ? (
-                          <span className="inline-flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Dang tai CV Online...
-                          </span>
-                        ) : null}
-                      </div>
-                      {cvOnlineFileName ? (
-                        <div className="mt-3 rounded-md bg-white px-3 py-2 text-sm text-muted-foreground">
-                          File: {cvOnlineFileName}
-                        </div>
-                      ) : null}
-                    </div>
-                    {!cvOnlineMeta ? (
-                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                        Upload CV để tạo CV Online.
-                      </div>
-                    ) : null}
-                    <Form {...cvOnlineForm}>
-                      <form onSubmit={cvOnlineForm.handleSubmit(handleCvOnlineSave)} className="grid gap-4">
-                        <div className="rounded-xl border bg-white shadow-sm">
-                          <div className="grid gap-6 p-6 md:grid-cols-[260px_1fr]">
-                            <div className="space-y-6 border-b bg-emerald-50/60 px-4 py-6 md:border-b-0 md:border-r md:pb-6 md:pr-6">
-                              <div className="space-y-4">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Personal info</p>
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="name"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Name</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Full name"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="designation"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Designation</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Role / title"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="emailAddress"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Email address</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="email@domain.com"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="contact"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Contact</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Phone number"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="location"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Location</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="City, Country"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="linkedinLink"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>LinkedIn link</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="https://linkedin.com/in/..."
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-
-                              <div className="space-y-4">
-                                <div className="h-px w-full bg-emerald-200" />
-                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Skills</p>
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="skills"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Skills</FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          rows={4}
-                                          placeholder="One skill per line"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="language"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Language</FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          rows={3}
-                                          placeholder="One language per line"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                            </div>
-
-                            <div className="space-y-6 rounded-lg bg-white p-4">
-                              <div className="space-y-4">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Experience</p>
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="yearsOfExperience"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Years of experience</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="e.g. 3 years"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="workedAs"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Worked as</FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          rows={4}
-                                          placeholder="One role per line"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="companiesWorkedAt"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Companies worked at</FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          rows={4}
-                                          placeholder="One company per line"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-
-                              <div className="space-y-4">
-                                <div className="h-px w-full bg-emerald-200" />
-                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Education</p>
-                                <div className="grid gap-4 md:grid-cols-2">
-                                  <FormField
-                                    control={cvOnlineForm.control}
-                                    name="degree"
-                                    render={({ field: inputField }) => (
-                                      <FormItem>
-                                        <FormLabel>Degree</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            placeholder="Degree"
-                                            disabled={!cvOnlineMeta}
-                                            {...inputField}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={cvOnlineForm.control}
-                                    name="yearOfGraduation"
-                                    render={({ field: inputField }) => (
-                                      <FormItem>
-                                        <FormLabel>Year of graduation</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            placeholder="2024"
-                                            disabled={!cvOnlineMeta}
-                                            {...inputField}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={cvOnlineForm.control}
-                                    name="collegeName"
-                                    render={({ field: inputField }) => (
-                                      <FormItem>
-                                        <FormLabel>College name</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            placeholder="College name"
-                                            disabled={!cvOnlineMeta}
-                                            {...inputField}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={cvOnlineForm.control}
-                                    name="university"
-                                    render={({ field: inputField }) => (
-                                      <FormItem>
-                                        <FormLabel>University</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            placeholder="University"
-                                            disabled={!cvOnlineMeta}
-                                            {...inputField}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="space-y-4">
-                                <div className="h-px w-full bg-emerald-200" />
-                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Awards & Certifications</p>
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="awards"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Awards</FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          rows={2}
-                                          placeholder="One award per line"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={cvOnlineForm.control}
-                                  name="certification"
-                                  render={({ field: inputField }) => (
-                                    <FormItem>
-                                      <FormLabel>Certification</FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          rows={2}
-                                          placeholder="One certification per line"
-                                          disabled={!cvOnlineMeta}
-                                          {...inputField}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button type="button" variant="outline" onClick={() => handleCvOnlineDialogChange(false)}>
-                            Dong
-                          </Button>
-                          <Button type="submit" disabled={!cvOnlineMeta || isCvOnlineSaving}>
-                            {isCvOnlineSaving ? "Dang luu..." : "Luu CV Online"}
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button variant="outline" onClick={() => handleCvOnlineDialogChange(true)}>
+                CV Online (AI)
+              </Button>
+              <CvOnlineDialog
+                open={isCvOnlineOpen}
+                onOpenChange={handleCvOnlineDialogChange}
+                form={cvOnlineForm}
+                cvOnlineMeta={cvOnlineMeta}
+                cvOnlineFileName={cvOnlineFileName}
+                isParsing={isCvParsing}
+                isSaving={isCvOnlineSaving}
+                isLoading={isCvOnlineLoading}
+                onParseFile={handleCvParseUpload}
+                onSave={handleCvOnlineSave}
+              />
             </CardHeader>
             <CardContent className="grid gap-6">
-              <div className="flex items-center justify-center w-full">
-                <Label
-                  htmlFor="dropzone-file"
-                  className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted transition-colors"
-                >
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Upload className="w-10 h-10 mb-3 text-muted-foreground" />
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      <span className="font-semibold">Nhấn để tải lên</span> hoặc kéo thả
-                    </p>
-                    <p className="text-xs text-muted-foreground">PDF (Tối đa 10MB)</p>
-                  </div>
-                  <Input id="dropzone-file" type="file" className="hidden" accept=".pdf" onChange={handleCvUpload} disabled={isCvUploading} />
-                </Label>
-              </div>
               <div className="space-y-4">
                 <h3 className="font-medium text-lg">CV đã tải lên</h3>
                 {uploadedCvs.length > 0 ? (
@@ -1222,10 +822,8 @@ export default function JobSeekerDashboardPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           {cvUrl ? (
-                            <Button asChild variant="outline" size="sm">
-                              <a href={cvUrl} target="_blank" rel="noreferrer">
-                                Xem CV
-                              </a>
+                            <Button variant="outline" size="sm" onClick={openCv} disabled={isCvOpening}>
+                              {isCvOpening ? "Đang mở..." : "Xem CV"}
                             </Button>
                           ) : null}
                           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeCv(cv)}>
@@ -1256,9 +854,9 @@ export default function JobSeekerDashboardPage() {
             </CardHeader>
             <CardContent className="grid gap-4">
               {isRecommendedLoading ? (
-                <p className="text-sm text-muted-foreground">Dang tai goi y...</p>
+                <p className="text-sm text-muted-foreground">Đang tải gợi ý...</p>
               ) : recommendedItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Chua co goi y phu hop.</p>
+                <p className="text-sm text-muted-foreground">Chưa có gợi ý phù hợp.</p>
               ) : (
                 recommendedItems.map((job) => {
                   const logo = !job.logoUrl && job.logoId ? PlaceHolderImages.find((p) => p.id === job.logoId) : null;
@@ -1300,5 +898,13 @@ export default function JobSeekerDashboardPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
 
 

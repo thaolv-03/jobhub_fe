@@ -57,7 +57,7 @@ type NavItem = {
 
 const recruiterNavItems: NavItem[] = [
   { href: "/recruiter/dashboard", label: "Dashboard", icon: LayoutDashboard, match: "exact" },
-  { href: "/recruiter/dashboard/profile", label: "Hồ sơ", icon: UserCircle2, match: "startsWith" },
+  { href: "/recruiter/dashboard/profile", label: "Hồ sơ", icon: UserCircle2, match: "startsWith" },
   { href: "/recruiter/dashboard/jobs", label: "Quản lý tin đăng", icon: Briefcase, match: "startsWith" },
   { href: "/recruiter/dashboard/post-job", label: "Đăng tin mới", icon: PlusCircle, match: "startsWith", action: "post-job" },
   { href: "/recruiter/dashboard/applicants", label: "Quản lý ứng viên", icon: Users, match: "startsWith" },
@@ -73,7 +73,7 @@ const pageMetaMap = [
   },
   {
     match: "/recruiter/dashboard/profile",
-    title: "Hồ sơ recruiter",
+    title: "Hồ sơ recruiter",
     subtitle: "Cập nhật ảnh đại diện và thông tin hồ sơ.",
   },
   {
@@ -157,8 +157,9 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
           accessToken,
         });
         const isMissingCompany = !response.data?.companyId;
-        setIsRecruiterMissing(isMissingCompany);
-        if (isMissingCompany) {
+        const hasPendingRole = roles.includes('RECRUITER_PENDING');
+        setIsRecruiterMissing(isMissingCompany && !hasPendingRole);
+        if (isMissingCompany && !hasPendingRole) {
           try {
             localStorage.removeItem('jobhub_consulting_submitted');
             localStorage.removeItem('jobhub_upgrade_company_source');
@@ -171,6 +172,12 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
       } catch (error) {
         const apiError = error as ApiError;
         const isNotFound = apiError?.code === 404 || apiError?.status?.toLowerCase().includes('not_found');
+        const hasPendingRole = roles.includes('RECRUITER_PENDING');
+        if (isNotFound && hasPendingRole) {
+          setIsRecruiterMissing(false);
+          setRecruiterStatus('PENDING');
+          return;
+        }
         if (isNotFound) {
           setIsRecruiterMissing(true);
           setRecruiterStatus(null);
@@ -208,7 +215,7 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
     const isRecruiter = roles.includes('RECRUITER');
     const isPendingRecruiter = roles.includes('RECRUITER_PENDING');
     const isApproved = recruiterStatus === 'APPROVED';
-    const isNotApproved = recruiterStatus === null || recruiterStatus === 'PENDING' || recruiterStatus === 'REJECTED';
+    const isPendingStatus = recruiterStatus === 'PENDING' || recruiterStatus === 'REJECTED';
     const consultationSubmitted = typeof window !== 'undefined'
       ? localStorage.getItem('jobhub_consulting_submitted') === 'true'
       : false;
@@ -218,7 +225,7 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
       || pathname === '/recruiter/dashboard/pending-approval';
 
     if (isRecruiter) {
-      if (isNotApproved) {
+      if (isPendingStatus) {
         const target = consultationSubmitted
           ? '/recruiter/dashboard/pending-approval'
           : '/recruiter/dashboard/consulting-need';
@@ -272,6 +279,7 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
   const isRecruiter = roles.includes('RECRUITER');
   const isPendingRecruiter = roles.includes('RECRUITER_PENDING');
   const isApproved = recruiterStatus === 'APPROVED';
+  const isPendingStatus = recruiterStatus === 'PENDING' || recruiterStatus === 'REJECTED';
   const consultationSubmitted = typeof window !== 'undefined'
     ? localStorage.getItem('jobhub_consulting_submitted') === 'true'
     : false;
@@ -279,7 +287,7 @@ function RecruiterDashboardGuard({ children }: { children: React.ReactNode }) {
     ? '/recruiter/dashboard/pending-approval'
     : '/recruiter/dashboard/consulting-need';
 
-  if (isRecruiter && !isApproved) {
+  if (isRecruiter && isPendingStatus) {
     if (pathname !== pendingTarget) {
       return null;
     }
@@ -305,7 +313,7 @@ function SidebarCollapseButton() {
       variant="ghost"
       size="sm"
       onClick={toggleSidebar}
-      className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center"
+      className="w-full justify-start gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white group-data-[collapsible=icon]:justify-center"
     >
       {state === "expanded" ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
       <span className="text-xs font-medium group-data-[collapsible=icon]:hidden">
@@ -334,18 +342,18 @@ function RecruiterSidebar({
   };
 
   return (
-    <Sidebar variant="inset" collapsible="icon">
-      <SidebarHeader className="gap-3 border-b px-4 py-4">
+    <Sidebar variant="inset" collapsible="icon" className="border-r border-slate-200/60 dark:border-slate-800/80">
+      <SidebarHeader className="gap-3 border-b px-4 py-4 border-slate-200/70 dark:border-slate-800">
         <Link
           href="/recruiter/dashboard"
           className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary dark:bg-primary/20">
             <Building2 className="h-5 w-5" />
           </span>
           <div className="leading-tight group-data-[collapsible=icon]:hidden">
-            <p className="text-base font-semibold">JobHub</p>
-            <p className="text-xs text-muted-foreground">Recruiter Dashboard</p>
+            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">JobHub</p>
+            <p className="text-xs text-muted-foreground dark:text-slate-400">Recruiter Dashboard</p>
           </div>
         </Link>
       </SidebarHeader>
@@ -362,7 +370,7 @@ function RecruiterSidebar({
                     isActive={active}
                     onClick={onPostJob}
                     tooltip={item.label}
-                    className="relative gap-3 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:after:absolute data-[active=true]:after:left-0 data-[active=true]:after:top-2 data-[active=true]:after:h-4 data-[active=true]:after:w-1 data-[active=true]:after:rounded-full data-[active=true]:after:bg-primary"
+                    className="relative gap-3 text-slate-600 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:after:absolute data-[active=true]:after:left-0 data-[active=true]:after:top-2 data-[active=true]:after:h-4 data-[active=true]:after:w-1 data-[active=true]:after:rounded-full data-[active=true]:after:bg-primary"
                   >
                     <Icon className="h-4 w-4" />
                     <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
@@ -377,7 +385,7 @@ function RecruiterSidebar({
                   asChild
                   isActive={active}
                   tooltip={item.label}
-                  className="relative gap-3 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:after:absolute data-[active=true]:after:left-0 data-[active=true]:after:top-2 data-[active=true]:after:h-4 data-[active=true]:after:w-1 data-[active=true]:after:rounded-full data-[active=true]:after:bg-primary"
+                  className="relative gap-3 text-slate-600 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:after:absolute data-[active=true]:after:left-0 data-[active=true]:after:top-2 data-[active=true]:after:h-4 data-[active=true]:after:w-1 data-[active=true]:after:rounded-full data-[active=true]:after:bg-primary"
                 >
                   <Link href={item.href}>
                     <Icon className="h-4 w-4" />
@@ -495,23 +503,30 @@ export default function RecruiterDashboardLayout({
             }
             rightActions={
               <>
-                <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:inline-flex border-slate-200 bg-white text-slate-800 hover:border-emerald-400 hover:text-emerald-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:border-emerald-300 dark:hover:text-emerald-200"
+                >
                   <Link href="/">Về trang chủ</Link>
                 </Button>
                 <ThemeToggle />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={avatarUrl || undefined} alt="Recruiter avatar" />
-                        <AvatarFallback>RH</AvatarFallback>
+                      <Avatar className="h-8 w-8 overflow-hidden">
+                        <AvatarImage src={avatarUrl || undefined} alt="Recruiter avatar" className="h-full w-full object-cover" />
+                        <AvatarFallback className="dark:text-slate-200">RH</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Hồ sơ</DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="dark:border-slate-800 dark:bg-slate-950">
+                    <DropdownMenuItem asChild className="dark:focus:bg-slate-900">
+                      <Link href="/recruiter/dashboard/profile">Hồ sơ</Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                    <DropdownMenuItem onClick={handleLogout} className="text-destructive dark:focus:bg-slate-900">
                       <LogOut className="mr-2 h-4 w-4" />
                       Đăng xuất
                     </DropdownMenuItem>
@@ -521,7 +536,7 @@ export default function RecruiterDashboardLayout({
             }
           />
         )}
-        <main className="flex-1 bg-muted/30">
+        <main className="flex-1 bg-muted/30 dark:bg-slate-950">
           <RecruiterDashboardGuard>{children}</RecruiterDashboardGuard>
         </main>
       </SidebarInset>

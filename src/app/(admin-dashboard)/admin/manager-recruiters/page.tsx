@@ -26,11 +26,11 @@ const PAGE_SIZE = 8;
 const getAccountStatusLabel = (status: AccountStatus) => {
   switch (status) {
     case "ACTIVE":
-      return "Active";
+      return "Hoạt động";
     case "INACTIVE":
-      return "Inactive";
+      return "Không hoạt động";
     case "LOCKED":
-      return "Locked";
+      return "Đã khóa";
     default:
       return status;
   }
@@ -52,11 +52,11 @@ const getAccountStatusBadgeClass = (status: AccountStatus) => {
 const getRecruiterStatusLabel = (status: RecruiterAdminDetail["status"]) => {
   switch (status) {
     case "APPROVED":
-      return "Approved";
+      return "Đã duyệt";
     case "REJECTED":
-      return "Rejected";
+      return "Từ chối";
     default:
-      return "Pending";
+      return "Chờ duyệt";
   }
 };
 
@@ -109,8 +109,8 @@ export default function ManageRecruitersPage() {
       setTotalCount(data.count);
     } catch (error) {
       toast({
-        title: "Failed to load recruiters",
-        description: "Please try again.",
+        title: "Không thể tải nhà tuyển dụng",
+        description: "Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -138,8 +138,8 @@ export default function ManageRecruitersPage() {
       await loadRecruiters();
     } catch (error) {
       toast({
-        title: "Failed to update account",
-        description: "Please try again.",
+        title: "Cập nhật tài khoản thất bại",
+        description: "Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -154,11 +154,11 @@ export default function ManageRecruitersPage() {
       setUpdatingRecruiterId(recruiterId);
       await updateRecruiterStatus(accessToken, recruiterId, status);
       await loadRecruiters();
-      toast({ title: "Recruiter status updated" });
+      toast({ title: "Đã cập nhật trạng thái nhà tuyển dụng" });
     } catch (error) {
       toast({
-        title: "Failed to update recruiter",
-        description: "Please try again.",
+        title: "Cập nhật nhà tuyển dụng thất bại",
+        description: "Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -177,8 +177,8 @@ export default function ManageRecruitersPage() {
       setIsDocsOpen(true);
     } catch (error) {
       toast({
-        title: "Failed to load documents",
-        description: "Please try again.",
+        title: "Không thể tải tài liệu",
+        description: "Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -194,12 +194,12 @@ export default function ManageRecruitersPage() {
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Recruiters</CardTitle>
-            <CardDescription>Profiles with RECRUITER role.</CardDescription>
+            <CardTitle>Nhà tuyển dụng</CardTitle>
+            <CardDescription>Hồ sơ có vai trò RECRUITER.</CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Input
-              placeholder="Search by email, company, phone"
+              placeholder="Tìm theo email, công ty, số điện thoại"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
@@ -215,12 +215,12 @@ export default function ManageRecruitersPage() {
               }}
             >
               <SelectTrigger className="w-44">
-                <SelectValue placeholder="Recruiter status" />
+                <SelectValue placeholder="Trạng thái duyệt" />
               </SelectTrigger>
               <SelectContent>
                 {recruiterStatusOptions.map((status) => (
                   <SelectItem key={status} value={status}>
-                    {status === "all" ? "All recruiter statuses" : getRecruiterStatusLabel(status)}
+                    {status === "all" ? "Tất cả trạng thái" : getRecruiterStatusLabel(status)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -233,12 +233,12 @@ export default function ManageRecruitersPage() {
               }}
             >
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="Account status" />
+                <SelectValue placeholder="Trạng thái tài khoản" />
               </SelectTrigger>
               <SelectContent>
                 {accountStatusOptions.map((status) => (
                   <SelectItem key={status} value={status}>
-                    {status === "all" ? "All account statuses" : getAccountStatusLabel(status)}
+                    {status === "all" ? "Tất cả trạng thái" : getAccountStatusLabel(status)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -251,26 +251,26 @@ export default function ManageRecruitersPage() {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Position</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Documents</TableHead>
-                <TableHead>Account status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Công ty</TableHead>
+                <TableHead>Số điện thoại</TableHead>
+                <TableHead>Chức vụ</TableHead>
+                <TableHead>Trạng thái duyệt</TableHead>
+                <TableHead>Tài liệu</TableHead>
+                <TableHead>Trạng thái tài khoản</TableHead>
+                <TableHead className="text-right">Hành động</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={9} className="py-6 text-center text-sm text-muted-foreground">
-                    Loading recruiters...
+                    Đang tải danh sách nhà tuyển dụng...
                   </TableCell>
                 </TableRow>
               ) : visibleRecruiters.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
-                    No recruiters found.
+                    Không tìm thấy nhà tuyển dụng.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -293,7 +293,7 @@ export default function ManageRecruitersPage() {
                         onClick={() => handleViewDocuments(recruiter)}
                         disabled={docsLoading}
                       >
-                        View docs
+                        Xem hồ sơ
                       </Button>
                     </TableCell>
                     <TableCell>
@@ -310,7 +310,7 @@ export default function ManageRecruitersPage() {
                           onClick={() => handleRecruiterStatusUpdate(recruiter.recruiterId, "APPROVED")}
                           className="hover:bg-emerald-600 hover:text-white"
                         >
-                          Approve
+                          Duyệt
                         </Button>
                         <Button
                           size="sm"
@@ -319,7 +319,7 @@ export default function ManageRecruitersPage() {
                           onClick={() => handleRecruiterStatusUpdate(recruiter.recruiterId, "REJECTED")}
                           className="hover:bg-rose-600 hover:text-white"
                         >
-                          Reject
+                          Từ chối
                         </Button>
                         <Button
                           size="sm"
@@ -332,7 +332,7 @@ export default function ManageRecruitersPage() {
                               : "hover:bg-amber-500 hover:text-white"
                           }
                         >
-                          {recruiter.accountStatus === "LOCKED" ? "Unlock" : "Lock"}
+                          {recruiter.accountStatus === "LOCKED" ? "Mở khóa" : "Khóa"}
                         </Button>
                       </div>
                     </TableCell>
@@ -343,7 +343,7 @@ export default function ManageRecruitersPage() {
           </Table>
           <AdminTableFooter
             totalCount={totalCount}
-            totalLabel="recruiters"
+            totalLabel="nhà tuyển dụng"
             page={page}
             pageSize={PAGE_SIZE}
             onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
@@ -355,17 +355,17 @@ export default function ManageRecruitersPage() {
       <Dialog open={isDocsOpen} onOpenChange={setIsDocsOpen}>
         <DialogContent className="max-w-lg w-[min(32rem,calc(100vw-2rem))] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Recruiter documents</DialogTitle>
+            <DialogTitle>Tài liệu nhà tuyển dụng</DialogTitle>
             <DialogDescription>
               {selectedRecruiter
-                ? `Recruiter #${selectedRecruiter.recruiterId} documents`
-                : "No recruiter selected"}
+                ? `Tài liệu của nhà tuyển dụng #${selectedRecruiter.recruiterId}`
+                : "Chưa chọn nhà tuyển dụng"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {documents.length === 0 ? (
               <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-                {selectedRecruiter ? "No documents available." : "Select a recruiter to view documents."}
+                {selectedRecruiter ? "Chưa có tài liệu." : "Hãy chọn nhà tuyển dụng để xem tài liệu."}
               </div>
             ) : (
               documents.map((doc) => (
@@ -377,7 +377,7 @@ export default function ManageRecruitersPage() {
                     </div>
                     <Button asChild variant="outline" size="sm" className="shrink-0 justify-self-end">
                       <a href={doc.downloadUrl} target="_blank" rel="noreferrer">
-                        Open
+                        Mở
                       </a>
                     </Button>
                   </div>

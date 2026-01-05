@@ -96,7 +96,7 @@ export default function EditJobPage() {
     const loadJob = async () => {
       if (!accessToken || !jobId || Number.isNaN(jobId)) {
         setIsLoading(false);
-        setErrorMessage("Kh“ng tAªm th §y tin tuy?n d?ng.");
+        setErrorMessage("Không tìm thấy tin tuyển dụng.");
         return;
       }
 
@@ -125,7 +125,7 @@ export default function EditJobPage() {
       } catch (error) {
         const apiError = error as ApiError;
         if (!mounted) return;
-        setErrorMessage(apiError.message || "Kh“ng t?i Ž`ŽŸng tin tuy?n d?ng.");
+        setErrorMessage(apiError.message || "Không tải được thông tin tuyển dụng.");
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -159,7 +159,7 @@ export default function EditJobPage() {
       });
 
       toast({
-        title: "Cập nhật thành công!",
+        title: "Cập nhật thành công!",
         description: `Tin tuyển dụng \"${values.title}\" đã được cập nhật.`,
       });
       router.push("/recruiter/dashboard/jobs");
@@ -167,7 +167,7 @@ export default function EditJobPage() {
       const apiError = error as ApiError;
       toast({
         variant: "destructive",
-        title: "Cập nhật thất bại",
+        title: "Cập nhật thất bại",
         description: apiError.message || "Không thể cập nhật tin tuyển dụng.",
       });
     }
@@ -176,20 +176,22 @@ export default function EditJobPage() {
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <div className="max-w-4xl mx-auto w-full">
-        <Card>
+        <Card className="border-border/60 bg-background/95 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/60">
           <CardHeader>
-            <CardTitle>Chỉnh sửa tin tuyển dụng</CardTitle>
-            <CardDescription>Cập nhật thông tin cho tin tuyển dụng của bạn.</CardDescription>
+            <CardTitle className="text-slate-900 dark:text-slate-100">Chỉnh sửa tin tuyển dụng</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-300">
+              Cập nhật thông tin cho tin tuyển dụng của bạn.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading || (!initialValues && !errorMessage) ? (
               <div className="space-y-4">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full dark:bg-slate-800" />
+                <Skeleton className="h-10 w-full dark:bg-slate-800" />
+                <Skeleton className="h-10 w-full dark:bg-slate-800" />
               </div>
             ) : errorMessage ? (
-              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground dark:border-slate-700/70 dark:text-slate-300">
                 {errorMessage}
               </div>
             ) : (

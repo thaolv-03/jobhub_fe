@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { type MouseEvent } from "react";
 import Link from "next/link";
@@ -75,11 +75,11 @@ export function Navbar() {
 
   const handleRecruiterRedirect = () => {
     if (!isAuthenticated) {
-        router.push('/login?next=/recruiter/dashboard');
+        router.push('/login?next=/recruiter');
         return;
     }
     // Always redirect to the recruiter dashboard. The layout will handle role-based redirection.
-    router.push('/recruiter/dashboard');
+    router.push('/recruiter');
   };
 
   const handleJobSeekerProfileClick = async (event: MouseEvent<HTMLAnchorElement>) => {
@@ -105,8 +105,12 @@ export function Navbar() {
     if (isAuthenticated && account) {
       return (
         <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={handleRecruiterRedirect}>
-                Đăng tuyển & Tìm hồ sơ
+            <Button
+                variant="outline"
+                className="border-slate-200 bg-slate-50 text-slate-800 hover:border-primary hover:bg-primary hover:text-primary-foreground dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:border-emerald-300"
+                onClick={handleRecruiterRedirect}
+            >
+                Nhà tuyển dụng
             </Button>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -121,7 +125,7 @@ export function Navbar() {
                     </Avatar>
                 </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 dark:border-slate-800 dark:bg-slate-950">
                 <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none">
@@ -154,14 +158,22 @@ export function Navbar() {
 
     return (
         <div className="flex items-center gap-2">
-            <Button asChild variant="ghost">
+            <Button
+              asChild
+              variant="outline"
+              className="border-slate-200 bg-white text-slate-800 hover:border-primary hover:bg-primary hover:text-primary-foreground dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-100 dark:hover:border-emerald-300"
+            >
                 <Link href="/login">Đăng nhập</Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
                 <Link href="/register">Đăng ký</Link>
             </Button>
-            <div className="h-6 border-l mx-2"></div>
-            <Button variant="outline" onClick={handleRecruiterRedirect}>
+            <div className="h-6 border-l border-slate-200 mx-2 dark:border-slate-700"></div>
+            <Button
+                variant="outline"
+                className="border-slate-200 bg-slate-50 text-slate-800 hover:border-primary hover:bg-primary hover:text-primary-foreground dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:border-emerald-300"
+                onClick={handleRecruiterRedirect}
+            >
                 Nhà tuyển dụng
             </Button>
         </div>
@@ -169,7 +181,7 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 dark:border-slate-800 dark:bg-slate-950/90">
       <Container className="flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
         <div className="flex gap-6 md:gap-10">
           <Link href="/" className="flex items-center space-x-2">
@@ -179,13 +191,19 @@ export function Navbar() {
           <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
             <Link
               href="/jobs"
-              className="text-muted-foreground transition-colors hover:text-primary"
+              className="text-slate-600 transition-colors hover:text-primary dark:text-slate-300 dark:hover:text-emerald-300"
             >
               Tìm việc làm
             </Link>
             <Link
+              href="/companies"
+              className="text-slate-600 transition-colors hover:text-primary dark:text-slate-300 dark:hover:text-emerald-300"
+            >
+              Danh sách công ty
+            </Link>
+            <Link
               href="/job-seeker/dashboard"
-              className="text-muted-foreground transition-colors hover:text-primary"
+              className="text-slate-600 transition-colors hover:text-primary dark:text-slate-300 dark:hover:text-emerald-300"
               onClick={handleJobSeekerProfileClick}
               >
               Hồ sơ & CV
@@ -200,5 +218,6 @@ export function Navbar() {
     </header>
   );
 }
+
 
 

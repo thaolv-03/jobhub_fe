@@ -147,6 +147,13 @@ export default function LoginPage() {
   };
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.google?.accounts?.id) {
+      setIsGoogleLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!isGoogleLoaded || !googleClientId || !googleButtonRef.current) {
       return;
     }
@@ -158,6 +165,7 @@ export default function LoginPage() {
       client_id: googleClientId,
       callback: handleGoogleCredential,
     });
+    googleButtonRef.current.innerHTML = "";
     googleAccounts.id.renderButton(googleButtonRef.current, {
       theme: "outline",
       size: "large",
@@ -185,7 +193,7 @@ export default function LoginPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="email@example.com" {...field} disabled={isLoading} />
+                        <Input placeholder="username@gmail.com" {...field} disabled={isLoading} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -211,11 +219,11 @@ export default function LoginPage() {
                 />
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Dang nhap
+                  Đăng nhập
                 </Button>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span className="h-px flex-1 bg-border" />
-                  <span>Hoac</span>
+                  <span>Hoặc</span>
                   <span className="h-px flex-1 bg-border" />
                 </div>
                 {googleClientId ? (
@@ -224,7 +232,7 @@ export default function LoginPage() {
                   </div>
                 ) : (
                   <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                    Chưa cấu hình Google Client ID. Hay thêm NEXT_PUBLIC_GOOGLE_CLIENT_ID vào .env.local.
+                    Chưa cấu hình Google Client ID. Hãy thêm NEXT_PUBLIC_GOOGLE_CLIENT_ID vào .env.local.
                   </div>
                 )}
                 <div className="mt-4 text-center text-sm">

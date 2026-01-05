@@ -57,14 +57,17 @@ const forwardGetWithBody = async (
   });
 };
 
-export async function POST(request: NextRequest, context: { params: { jobId: string } }) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ jobId: string }> }
+) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (!baseUrl) {
     return buildErrorResponse("Missing API base URL.", 500);
   }
 
   const body = await request.json();
-  const { jobId } = context.params;
+  const { jobId } = await context.params;
   const targetUrl = new URL(`/api/jobs/${jobId}/applications`, baseUrl);
 
   const authHeader = request.headers.get("authorization");

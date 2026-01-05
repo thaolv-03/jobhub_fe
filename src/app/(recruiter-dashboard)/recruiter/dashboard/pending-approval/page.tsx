@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
  import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
  import { useRouter } from 'next/navigation';
@@ -49,7 +49,7 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
     {steps.map((step, index) => {
       const isDone = step.status === "done";
       const isActive = step.status === "active";
-      const lineClass = isDone || isActive ? "bg-emerald-500" : "bg-muted-foreground/30";
+      const lineClass = isDone || isActive ? "bg-primary" : "bg-muted-foreground/30 dark:bg-slate-700/60";
       return (
         <div key={step.label} className="flex flex-1 flex-col items-center text-center">
           <div className="flex w-full items-center">
@@ -57,9 +57,9 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
             <div
               className={[
                 "flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold",
-                isDone ? "border-emerald-500 bg-emerald-500 text-white" : "",
-                isActive ? "border-emerald-500 text-emerald-600" : "",
-                step.status === "inactive" ? "border-muted-foreground/30 text-muted-foreground" : "",
+                isDone ? "border-primary bg-primary text-primary-foreground" : "",
+                isActive ? "border-primary text-primary dark:text-primary" : "",
+                step.status === "inactive" ? "border-muted-foreground/30 text-muted-foreground dark:border-slate-700 dark:text-slate-400" : "",
               ].join(" ")}
             >
               {isDone ? <Check className="h-4 w-4 text-white" /> : index + 1}
@@ -69,9 +69,9 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
           <span
             className={[
               "mt-2 text-xs font-medium",
-              isDone ? "text-emerald-600" : "",
-              isActive ? "text-emerald-700" : "",
-              step.status === "inactive" ? "text-muted-foreground" : "",
+              isDone ? "text-primary dark:text-primary" : "",
+              isActive ? "text-primary dark:text-primary" : "",
+              step.status === "inactive" ? "text-muted-foreground dark:text-slate-400" : "",
             ].join(" ")}
           >
             {step.label}
@@ -244,7 +244,7 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
        toast({
          variant: 'destructive',
          title: 'Missing company',
-         description: 'Company information is not available yet.',
+        description: 'Thông tin công ty chưa sẵn sàng.',
        });
        return;
      }
@@ -262,8 +262,8 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
        setCompany(response.data);
        setCompanyUpdated(true);
        toast({
-         title: 'Company updated',
-         description: 'Company information was saved successfully.',
+        title: 'Cập nhật công ty',
+        description: 'Thông tin công ty đã được lưu.',
        });
      } catch (error) {
        const apiError = error as ApiError;
@@ -304,7 +304,7 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
        const apiError = error as ApiError;
        toast({
          variant: 'destructive',
-         title: 'Upload failed',
+        title: 'Tải lên thất bại',
          description: apiError.message || 'Could not upload document.',
        });
      } finally {
@@ -337,17 +337,17 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
    const progressValue = Math.round((completedSteps / totalSteps) * 100);
 
    return (
-     <main className="flex min-h-[calc(100vh-113px)] flex-col items-center gap-6 p-4 md:gap-8 md:p-8">
+     <main className="flex min-h-[calc(100vh-113px)] flex-col items-center gap-6 bg-slate-50 p-4 md:gap-8 md:p-8 dark:bg-slate-950">
        <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[1.35fr,1fr]">
-         <Card className="text-center">
+         <Card className="text-center border-border/60 bg-background/90 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
            <CardHeader>
              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary mb-4">
                <Clock className="h-8 w-8" />
              </div>
-             <CardTitle className="text-2xl font-bold">Your request is being reviewed</CardTitle>
-             <CardDescription className="text-lg">
-               Thanks for submitting your recruiter upgrade. We will notify you by email once approved.
-             </CardDescription>
+              <CardTitle className="text-2xl font-bold dark:text-slate-100">Yêu cầu của bạn đang được xem xét</CardTitle>
+              <CardDescription className="text-lg dark:text-slate-300">
+                Cảm ơn bạn đã gửi yêu cầu nâng cấp nhà tuyển dụng. Chúng tôi sẽ thông báo qua email khi được duyệt.
+              </CardDescription>
            </CardHeader>
            <CardContent className="space-y-4">
              <StepIndicator
@@ -357,131 +357,162 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
                  { label: "Chờ phê duyệt", status: "active" },
                ]}
              />
-             <p className="text-muted-foreground">
-               We are reviewing your profile. Notifications will be sent to <span className="font-semibold text-foreground">{account?.email}</span>.
-             </p>
-             <p className="text-sm text-muted-foreground">
-               Typical review time is within 24 business hours.
-             </p>
-             <Button variant="outline" onClick={checkStatus} disabled={isCheckingStatus}>
-               {isCheckingStatus ? 'Checking...' : 'Check approval status'}
-             </Button>
+              <p className="text-muted-foreground dark:text-slate-300">
+                Hồ sơ của bạn đang được đánh giá. Thông báo sẽ được gửi đến <span className="font-semibold text-foreground dark:text-slate-100">{account?.email}</span>.
+              </p>
+              <p className="text-sm text-muted-foreground dark:text-slate-300">
+                Thời gian xét duyệt thường trong vòng 24 giờ làm việc.
+              </p>
+              <Button variant="outline" className="hover:bg-primary hover:text-primary-foreground dark:hover:bg-primary dark:hover:text-primary-foreground" onClick={checkStatus} disabled={isCheckingStatus}>
+                {isCheckingStatus ? 'Đang kiểm tra...' : 'Kiểm tra trạng thái duyệt'}
+              </Button>
            </CardContent>
          </Card>
 
          <div className="space-y-6">
-           <Card>
+           <Card className="border-border/60 bg-background/90 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
              <CardHeader>
-               <CardTitle>Verification checklist</CardTitle>
-               <CardDescription>Complete these items to help admins approve faster.</CardDescription>
+                <CardTitle className="dark:text-slate-100">Danh sách xác minh</CardTitle>
+                <CardDescription className="dark:text-slate-300">Hoàn tất các mục để admin phê duyệt nhanh hơn.</CardDescription>
              </CardHeader>
              <CardContent className="space-y-4">
-               <Progress value={progressValue} />
-               <div className="flex items-center justify-between text-sm">
-                 <span>Completed</span>
+               <Progress value={progressValue} className="bg-slate-200/70 dark:bg-slate-800/70" />
+               <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
+                  <span>Hoàn tất</span>
                  <span className="font-medium">{progressValue}%</span>
                </div>
-               <div className="space-y-2 text-sm">
+               <div className="space-y-2 text-sm text-slate-600 dark:text-slate-200">
                  <div className="flex items-center justify-between">
                    <div className="flex items-center gap-2">
-                     {companyComplete ? <FileCheck2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-muted-foreground" />}
-                     <span>Company information</span>
+                     {companyComplete ? <FileCheck2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-muted-foreground dark:text-slate-400" />}
+                      <span>Thông tin công ty</span>
                    </div>
-                   <Badge variant={companyComplete ? 'secondary' : 'outline'}>{companyComplete ? 'Done' : 'Pending'}</Badge>
+                   <Badge
+                     variant={companyComplete ? 'secondary' : 'outline'}
+                     className={
+                       companyComplete
+                         ? 'bg-primary text-primary-foreground hover:bg-primary dark:bg-primary dark:text-primary-foreground'
+                         : 'dark:text-slate-200'
+                     }
+                   >
+                      {companyComplete ? 'Hoàn tất' : 'Đang chờ'}
+                   </Badge>
                  </div>
                  <div className="flex items-center justify-between">
                    <div className="flex items-center gap-2">
-                     {documentsComplete ? <FileCheck2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-muted-foreground" />}
-                     <span>Business registration</span>
+                     {documentsComplete ? <FileCheck2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-muted-foreground dark:text-slate-400" />}
+                      <span>Giấy phép kinh doanh</span>
                    </div>
-                   <Badge variant={documentsComplete ? 'secondary' : 'outline'}>{documentsComplete ? 'Done' : 'Pending'}</Badge>
+                   <Badge
+                     variant={documentsComplete ? 'secondary' : 'outline'}
+                     className={
+                       documentsComplete
+                         ? 'bg-primary text-primary-foreground hover:bg-primary dark:bg-primary dark:text-primary-foreground'
+                         : 'dark:text-slate-200'
+                     }
+                   >
+                      {documentsComplete ? 'Hoàn tất' : 'Đang chờ'}
+                   </Badge>
                  </div>
                  <div className="flex items-center justify-between">
                    <div className="flex items-center gap-2">
-                     {approvalComplete ? <FileCheck2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-muted-foreground" />}
-                     <span>Waiting for admin approval</span>
+                     {approvalComplete ? <FileCheck2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-muted-foreground dark:text-slate-400" />}
+                      <span>Chờ admin phê duyệt</span>
                    </div>
-                   <Badge variant={approvalComplete ? 'secondary' : 'outline'}>{approvalComplete ? 'Done' : 'Pending'}</Badge>
+                   <Badge
+                     variant={approvalComplete ? 'secondary' : 'outline'}
+                     className={
+                       approvalComplete
+                         ? 'bg-primary text-primary-foreground hover:bg-primary dark:bg-primary dark:text-primary-foreground'
+                         : 'dark:text-slate-200'
+                     }
+                   >
+                      {approvalComplete ? 'Hoàn tất' : 'Đang chờ'}
+                   </Badge>
                  </div>
                </div>
              </CardContent>
            </Card>
 
            {showCompanyForm && (
-             <Card>
+             <Card className="border-border/60 bg-background/90 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
                <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
+                 <CardTitle className="flex items-center gap-2 dark:text-slate-100">
                    <Building2 className="h-5 w-5" />
-                   Update company info
+                    Cập nhật thông tin công ty
                  </CardTitle>
-                 <CardDescription>Keep company data accurate for faster review.</CardDescription>
+                  <CardDescription className="dark:text-slate-300">Giữ dữ liệu công ty chính xác để xét duyệt nhanh hơn.</CardDescription>
                </CardHeader>
                <CardContent className="space-y-4">
                  <div className="space-y-2">
-                   <Label htmlFor="company-name">Company name</Label>
+                    <Label htmlFor="company-name" className="text-slate-900 dark:text-slate-200">Tên công ty</Label>
                    <Input
                      id="company-name"
                      value={companyForm.companyName}
+                     className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
                      onChange={(event) => setCompanyForm((prev) => ({ ...prev, companyName: event.target.value }))}
                    />
                  </div>
                  <div className="space-y-2">
-                   <Label htmlFor="company-location">Location</Label>
+                    <Label htmlFor="company-location" className="text-slate-900 dark:text-slate-200">Địa chỉ</Label>
                    <Input
                      id="company-location"
                      value={companyForm.location}
+                     className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
                      onChange={(event) => setCompanyForm((prev) => ({ ...prev, location: event.target.value }))}
                    />
                  </div>
                  <div className="space-y-2">
-                   <Label htmlFor="company-website">Website</Label>
+                    <Label htmlFor="company-website" className="text-slate-900 dark:text-slate-200">Website</Label>
                    <Input
                      id="company-website"
                      value={companyForm.website}
+                     className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
                      onChange={(event) => setCompanyForm((prev) => ({ ...prev, website: event.target.value }))}
                    />
                  </div>
-                 <Button type="button" onClick={handleCompanySave} disabled={isSavingCompany}>
-                   {isSavingCompany ? 'Saving...' : 'Save company info'}
-                 </Button>
+                  <Button type="button" onClick={handleCompanySave} disabled={isSavingCompany}>
+                    {isSavingCompany ? 'Đang lưu...' : 'Lưu thông tin công ty'}
+                  </Button>
                </CardContent>
              </Card>
            )}
 
            {showBusinessRegistration && (
-             <Card>
+             <Card className="border-border/60 bg-background/90 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
                <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
+                 <CardTitle className="flex items-center gap-2 dark:text-slate-100">
                    <UploadCloud className="h-5 w-5" />
-                   Upload business registration
+                    Tải lên giấy phép kinh doanh
                  </CardTitle>
-                 <CardDescription>Upload a PDF or image file for admin verification.</CardDescription>
+                  <CardDescription className="dark:text-slate-300">Tải lên file PDF hoặc ảnh để admin xác minh.</CardDescription>
                </CardHeader>
                <CardContent className="space-y-4">
                  <div className="space-y-2">
-                   <Label htmlFor="doc-upload">Select document</Label>
+                    <Label htmlFor="doc-upload" className="text-slate-900 dark:text-slate-200">Chọn tài liệu</Label>
                    <Input
                      id="doc-upload"
                      type="file"
+                     className="bg-white text-slate-800 file:text-slate-700 file:bg-slate-100 file:border-slate-200 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70 dark:file:text-slate-100 dark:file:bg-slate-800/70 dark:file:border-slate-700"
                      ref={fileInputRef}
                      onChange={handleUploadDocument}
                      disabled={isUploadingDoc}
                    />
                  </div>
                  <div className="space-y-2 text-sm">
-                   {documents.length === 0 && <p className="text-muted-foreground">No documents uploaded yet.</p>}
+                    {documents.length === 0 && <p className="text-muted-foreground dark:text-slate-300">Chưa có tài liệu nào được tải lên.</p>}
                    {documents.map((doc) => (
                      <div key={doc.documentId} className="flex items-center justify-between gap-2">
                        <span className="truncate">{doc.fileName}</span>
-                       <a className="text-primary underline" href={doc.downloadUrl} target="_blank" rel="noreferrer">
-                         View
-                       </a>
+                        <a className="text-primary underline" href={doc.downloadUrl} target="_blank" rel="noreferrer">
+                          Xem
+                        </a>
                      </div>
                    ))}
                  </div>
-                 <Button type="button" variant="outline" onClick={fetchDocuments} disabled={isUploadingDoc}>
-                   Refresh documents
-                 </Button>
+                  <Button type="button" variant="outline" className="hover:bg-primary hover:text-primary-foreground dark:hover:bg-primary dark:hover:text-primary-foreground" onClick={fetchDocuments} disabled={isUploadingDoc}>
+                    Làm mới tài liệu
+                  </Button>
                </CardContent>
              </Card>
            )}

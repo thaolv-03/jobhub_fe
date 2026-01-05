@@ -26,7 +26,7 @@ type CompanyResponse = {
 };
 
 const profileSchema = z.object({
-  companyName: z.string().min(1, { message: "Vui lòng nhập tên công ty." }),
+  companyName: z.string().min(1, { message: "Vui lòng nhập tên công ty." }),
   position: z.string().optional(),
   phone: z.string().optional(),
 });
@@ -180,23 +180,23 @@ export default function RecruiterProfilePage() {
 
   const handleProfileSubmit = async (_values: ProfileFormValues) => {
     toast({
-      title: "Khong the luu",
-      description: "Backend chua co API cap nhat vi tri va so dien thoai.",
+      title: "Không thể lưu",
+      description: "Backend chưa có API cập nhật vị trí và số điện thoại.",
       variant: "destructive",
     });
   };
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <div className="grid items-start gap-6 lg:grid-cols-[320px,1fr]">
-        <Card className="lg:col-span-1">
+      <div className="grid items-stretch gap-6 md:grid-cols-[400px,1fr]">
+        <Card className="h-full flex flex-col border-border/60 dark:border-slate-800 dark:bg-slate-950/70">
           <CardHeader>
-            <CardTitle>Ảnh đại diện nhà tuyển dụng</CardTitle>
-            <CardDescription>Cập nhật ảnh đại diện nhà tuyển dụng.</CardDescription>
+            <CardTitle className="dark:text-slate-100">Ảnh đại diện nhà tuyển dụng</CardTitle>
+            <CardDescription className="dark:text-slate-300">Cập nhật ảnh đại diện nhà tuyển dụng.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <Avatar className="h-24 w-24">
+          <CardContent className="flex flex-1 flex-col">
+            <div className="flex flex-1 items-center justify-center">
+              <Avatar className="h-36 w-36">
                 <AvatarImage
                   src={avatarPreviewUrl ?? avatarUrl ?? ""}
                   alt="Recruiter avatar"
@@ -205,8 +205,8 @@ export default function RecruiterProfilePage() {
                 <AvatarFallback>RH</AvatarFallback>
               </Avatar>
             </div>
-            <div className="flex flex-col gap-2">
-              <Button asChild variant="outline" className="w-full">
+            <div className="flex flex-col gap-2 pb-2">
+              <Button asChild variant="outline" className="w-full dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100">
                 <Label htmlFor="recruiter-avatar-upload" className="w-full cursor-pointer">
                   <Upload className="mr-2 h-4 w-4" />
                   Chọn ảnh
@@ -222,25 +222,25 @@ export default function RecruiterProfilePage() {
               <Button type="button" onClick={handleAvatarUpload} disabled={isAvatarUploading || !avatarFile} className="w-full">
                 {isAvatarUploading ? "Đang tải..." : "Lưu ảnh"}
               </Button>
-              <p className="text-xs text-muted-foreground text-center">Tối đa 10MB. JPG, PNG.</p>
+              <p className="text-xs text-muted-foreground text-center dark:text-slate-400">Tối đa 10MB. JPG, PNG.</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="h-full border-border/60 dark:border-slate-800 dark:bg-slate-950/70">
           <CardHeader>
-            <CardTitle>Thông tin nhà tuyển dụng</CardTitle>
-            <CardDescription>Quản lý thông tin hồ sơ nhà tuyển dụng.</CardDescription>
+            <CardTitle className="dark:text-slate-100">Thông tin nhà tuyển dụng</CardTitle>
+            <CardDescription className="dark:text-slate-300">Quản lý thông tin hồ sơ nhà tuyển dụng.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-6 flex items-center gap-4 rounded-lg border p-4">
+            <div className="mb-6 flex items-center gap-4 rounded-lg border border-border/60 p-4 dark:border-slate-800">
               <Avatar className="h-16 w-16">
                 <AvatarImage src={company?.avatarUrl ?? ""} alt="Company avatar" className="object-cover" />
                 <AvatarFallback>CO</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="text-sm font-medium">Avatar cong ty</p>
-                <p className="text-xs text-muted-foreground">Chi hien thi, khong the chinh sua.</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Avatar công ty</p>
+                <p className="text-xs text-muted-foreground dark:text-slate-400">Chỉ hiển thị, không thể chỉnh sửa.</p>
               </div>
             </div>
             <Form {...form}>
@@ -250,9 +250,9 @@ export default function RecruiterProfilePage() {
                   name="companyName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tên công ty</FormLabel>
+                      <FormLabel className="text-slate-900 dark:text-slate-200">Tên công ty</FormLabel>
                       <FormControl>
-                        <Input {...field} disabled readOnly />
+                        <Input {...field} disabled readOnly className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -264,9 +264,9 @@ export default function RecruiterProfilePage() {
                     name="position"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Vị trí</FormLabel>
+                        <FormLabel className="text-slate-900 dark:text-slate-200">Vị trí</FormLabel>
                         <FormControl>
-                        <Input {...field} disabled={isLoading} />
+                        <Input {...field} disabled={isLoading} className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -277,9 +277,9 @@ export default function RecruiterProfilePage() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Số điện thoại</FormLabel>
+                        <FormLabel className="text-slate-900 dark:text-slate-200">Số điện thoại</FormLabel>
                         <FormControl>
-                          <Input {...field} disabled={isLoading} />
+                          <Input {...field} disabled={isLoading} className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

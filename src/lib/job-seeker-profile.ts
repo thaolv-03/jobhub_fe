@@ -57,6 +57,7 @@ export type ApplyJobPayload = {
 const PROFILE_ME_ENDPOINT = "/api/job-seekers/me";
 const CREATE_PROFILE_ENDPOINT = "/api/job-seekers";
 const UPLOAD_CV_ENDPOINT = "/api/job-seekers/cv";
+const DELETE_CV_ENDPOINT = "/api/job-seekers/cv";
 const UPLOAD_AVATAR_ENDPOINT = "/api/job-seekers/avatar";
 const PARSE_CV_ENDPOINT = "/api/job-seekers/cv/parse";
 const SAVE_CV_ONLINE_ENDPOINT = "/api/job-seekers/cv/online";
@@ -154,6 +155,13 @@ export async function uploadJobSeekerCv(file: File): Promise<JobSeekerProfile> {
   }
 
   return response.data;
+}
+
+export async function deleteJobSeekerCv(): Promise<void> {
+  await apiRequest(DELETE_CV_ENDPOINT, {
+    method: "DELETE",
+    suppressAuthFailure: true,
+  });
 }
 
 export async function parseJobSeekerCv(file: File): Promise<CvParseResponse> {

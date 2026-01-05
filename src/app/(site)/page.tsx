@@ -16,9 +16,9 @@ import { formatJobType, type JobType } from "@/lib/jobs";
 import { useAuth } from "@/hooks/use-auth";
 import { useFeaturedJobs } from "@/hooks/use-jobs";
 import { useTopCompanies } from "@/hooks/use-companies";
-import { useJobCategories } from "@/hooks/use-job-categories";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCompanies } from "@/hooks/use-companies";
+import { CATEGORIES } from "@/lib/job-form-data";
 
 const formatSalary = (job: { minSalary?: number | null; maxSalary?: number | null }) => {
   const min = job.minSalary ?? null;
@@ -36,10 +36,10 @@ const formatSalary = (job: { minSalary?: number | null; maxSalary?: number | nul
 };
 
 const locations = [
-  { value: "all", label: "Tất cả địa điểm" },
-  { value: "ha-noi", label: "Hà Nội" },
-  { value: "tp-ho-chi-minh", label: "TP. Hồ Chí Minh" },
-  { value: "da-nang", label: "Đà Nẵng" },
+  { value: "all", label: "\u0054\u1ea5\u0074 c\u1ea3 \u0111\u1ecb\u0061 \u0111\u0069\u1ec3\u006d" },
+  { value: "\u0048\u00e0 \u004e\u1ed9\u0069", label: "\u0048\u00e0 \u004e\u1ed9\u0069" },
+  { value: "TP HCM", label: "TP \u0048\u1ed3 \u0043\u00ed \u004d\u0069\u006e\u0068" },
+  { value: "\u0110\u00e0 \u004e\u1eb5\u006e\u0067", label: "\u0110\u00e0 \u004e\u1eb5\u006e\u0067" },
 ];
 
 const jobTypeOptions: { value: JobType | "all"; label: string }[] = [
@@ -65,7 +65,6 @@ export default function Home() {
   // Fetch data with React Query
   const { data: featuredJobs = [], isLoading: isFeaturedLoading } = useFeaturedJobs(4);
   const { data: topCompanies = [], isLoading: isTopCompaniesLoading } = useTopCompanies(6);
-  const { data: categoryOptions = [] } = useJobCategories();
 
   // Get unique company IDs from featured jobs
   const companyIds = useMemo(() => {
@@ -90,8 +89,8 @@ export default function Home() {
 
   // Memoize category options with "all" option
   const categoryOptionsWithAll = useMemo(() => {
-    return [{ value: "all", label: "Danh mục" }, ...categoryOptions.map((name) => ({ value: name, label: name }))];
-  }, [categoryOptions]);
+    return [{ value: "all", label: "Category" }, ...CATEGORIES.map((item) => ({ value: item.name, label: item.name }))];
+  }, []);
 
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -114,8 +113,11 @@ export default function Home() {
 
   return (
     <div className="flex flex-col">
-      <section className="relative overflow-hidden bg-gradient-to-b from-primary/10 via-background to-background">
-        <Container>
+      <div className="relative overflow-hidden bg-[url('/images/backgrounds/background_lightmode.png')] bg-cover bg-center bg-no-repeat dark:bg-[url('/images/backgrounds/background_darkmode.png')]">
+        <div className="absolute inset-0 bg-white/70 dark:bg-black/50" />
+        <div className="relative z-10">
+          <section className="relative">
+            <Container>
           <div className="py-16 md:py-24">
             <div className="space-y-8">
               <div className="space-y-6 max-w-3xl lg:max-w-4xl">
@@ -137,7 +139,7 @@ export default function Home() {
                             type="text"
                             value={keyword}
                             onChange={(event) => setKeyword(event.target.value)}
-                            placeholder="Từ khóa, chức danh hoặc công ty"
+                            placeholder="Tìm kiếm vị trí, công ty..."
                             className="min-h-[48px] flex-1 border-0 bg-transparent px-2.5 py-2 leading-6 shadow-none focus-visible:ring-0 md:px-0"
                           />
                         </div>
@@ -201,8 +203,10 @@ export default function Home() {
             </div>
           </div>
         </Container>
-      </section>
-      <BannerSlider />
+          </section>
+          <BannerSlider />
+        </div>
+      </div>
 
       <section className="py-16 md:py-20 bg-secondary/50">
         <Container>
@@ -291,7 +295,7 @@ export default function Home() {
                   <Link
                     key={company.companyId}
                     href={`/companies/${company.companyId}`}
-                    className="group flex h-20 w-32 items-center justify-center rounded-xl border bg-white/80 p-3 shadow-sm transition-transform hover:-translate-y-1"
+                    className="group flex h-20 w-32 items-center justify-center rounded-xl border border-white bg-white p-3 shadow-sm transition-transform hover:-translate-y-1"
                   >
                     {company.avatarUrl || logo?.imageUrl ? (
                       <Image

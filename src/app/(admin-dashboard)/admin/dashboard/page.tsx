@@ -4,6 +4,7 @@ import React from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { fetchAdminDashboardCharts } from "@/lib/admin-dashboard";
 import {
   fetchPendingRecruiters,
   fetchRecruiterDocuments,
@@ -37,46 +38,67 @@ import {
   Users,
 } from "lucide-react";
 
-const jobActivityData = [
-  { month: "Jan", jobs: 0 },
-  { month: "Feb", jobs: 0 },
-  { month: "Mar", jobs: 0 },
-  { month: "Apr", jobs: 0 },
-  { month: "May", jobs: 0 },
-  { month: "Jun", jobs: 0 },
-  { month: "Jul", jobs: 0 },
-  { month: "Aug", jobs: 0 },
-  { month: "Sep", jobs: 0 },
-  { month: "Oct", jobs: 0 },
-  { month: "Nov", jobs: 0 },
-  { month: "Dec", jobs: 0 },
-];
+const buildMonthlySeries = (
+  points: { month: string; count: number }[] | undefined,
+  valueKey: "jobs" | "cv"
+) => {
+  const now = new Date();
+  const map = new Map((points ?? []).map((item) => [item.month, item.count]));
+  const data = [] as Array<{ month: string; jobs?: number; cv?: number }>;
+  for (let i = 11; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const key = `${date.getFullYear()}-${month}`;
+    const label = `Th${date.getMonth() + 1}`;
+    const count = map.get(key) ?? 0;
+    if (valueKey == "jobs") {
+      data.push({ month: label, jobs: count });
+    } else {
+      data.push({ month: label, cv: count });
+    }
+  }
+  return data;
+};
 
-const cvActivityData = [
-  { month: "Jan", cv: 0 },
-  { month: "Feb", cv: 0 },
-  { month: "Mar", cv: 0 },
-  { month: "Apr", cv: 0 },
-  { month: "May", cv: 0 },
-  { month: "Jun", cv: 0 },
-  { month: "Jul", cv: 0 },
-  { month: "Aug", cv: 0 },
-  { month: "Sep", cv: 0 },
-  { month: "Oct", cv: 0 },
-  { month: "Nov", cv: 0 },
-  { month: "Dec", cv: 0 },
-];
+const sumPoints = (points: { count: number }[] | undefined) =>
+  (points ?? []).reduce((total, item) => total + (item.count ?? 0), 0);
+
+const USE_MOCK_CHARTS = true; // set true to use mock data
+// const USE_MOCK_CHARTS = false; // set true to use mock data
+
+const MOCK_CHARTS = {
+  jobPosts: [
+    { month: "2025-06", count: 18 },
+    { month: "2025-07", count: 26 },
+    { month: "2025-08", count: 31 },
+    { month: "2025-09", count: 22 },
+    { month: "2025-10", count: 35 },
+    { month: "2025-11", count: 41 },
+    { month: "2025-12", count: 29 },
+    { month: "2026-01", count: 33 },
+  ],
+  cvUploads: [
+    { month: "2025-06", count: 120 },
+    { month: "2025-07", count: 168 },
+    { month: "2025-08", count: 190 },
+    { month: "2025-09", count: 155 },
+    { month: "2025-10", count: 210 },
+    { month: "2025-11", count: 248 },
+    { month: "2025-12", count: 198 },
+    { month: "2026-01", count: 225 },
+  ],
+};
 
 const jobsChartConfig = {
   jobs: {
-    label: "Job posts",
+    label: "Tin tuyển dụng",
     color: "hsl(var(--chart-1))",
   },
 };
 
 const cvChartConfig = {
   cv: {
-    label: "CV uploads",
+    label: "Tải lên CV",
     color: "hsl(var(--chart-2))",
   },
 };
@@ -91,6 +113,11 @@ export default function AdminDashboardPage() {
   const [docsLoading, setDocsLoading] = React.useState(false);
   const [selectedRecruiter, setSelectedRecruiter] = React.useState<RecruiterAdmin | null>(null);
   const [documents, setDocuments] = React.useState<RecruiterDocument[]>([]);
+  const [jobActivityData, setJobActivityData] = React.useState(() => buildMonthlySeries([], "jobs"));
+  const [cvActivityData, setCvActivityData] = React.useState(() => buildMonthlySeries([], "cv"));
+  const [jobsTotal, setJobsTotal] = React.useState(0);
+  const [cvTotal, setCvTotal] = React.useState(0);
+  const [chartsLoading, setChartsLoading] = React.useState(false);
 
   React.useEffect(() => {
     if (!accessToken) return;
@@ -105,8 +132,8 @@ export default function AdminDashboardPage() {
       } catch (error) {
         if (!mounted) return;
         toast({
-          title: "Failed to load pending recruiters",
-          description: "Please try again.",
+          title: "Không thể tải danh sách chờ duyệt",
+          description: "Vui lòng thử lại.",
           variant: "destructive",
         });
       } finally {
@@ -121,6 +148,40 @@ export default function AdminDashboardPage() {
     };
   }, [accessToken, toast]);
 
+  React.useEffect(() => {
+    if (!accessToken) return;
+    let mounted = true;
+
+    const loadCharts = async () => {
+      try {
+        setChartsLoading(true);
+        const data = USE_MOCK_CHARTS
+          ? MOCK_CHARTS
+          : await fetchAdminDashboardCharts(accessToken);
+        if (!mounted) return;
+        setJobActivityData(buildMonthlySeries(data.jobPosts, "jobs"));
+        setCvActivityData(buildMonthlySeries(data.cvUploads, "cv"));
+        setJobsTotal(sumPoints(data.jobPosts));
+        setCvTotal(sumPoints(data.cvUploads));
+      } catch (error) {
+        if (!mounted) return;
+        toast({
+          title: "Khong the tai bieu do",
+          description: "Vui long thu lai.",
+          variant: "destructive",
+        });
+      } finally {
+        if (mounted) setChartsLoading(false);
+      }
+    };
+
+    void loadCharts();
+
+    return () => {
+      mounted = false;
+    };
+  }, [accessToken, toast]);
+
   const handleStatusUpdate = async (recruiterId: number, status: RecruiterStatus) => {
     if (!accessToken) return;
     try {
@@ -128,13 +189,13 @@ export default function AdminDashboardPage() {
       await updateRecruiterStatus(accessToken, recruiterId, status);
       setPendingRecruiters((prev) => prev.filter((item) => item.recruiterId !== recruiterId));
       toast({
-        title: "Status updated",
-        description: `Recruiter ${recruiterId} marked as ${status.toLowerCase()}.`,
+        title: "Đã cập nhật trạng thái",
+        description: `Nhà tuyển dụng #${recruiterId} đã được cập nhật ${status.toLowerCase()}.`,
       });
     } catch (error) {
       toast({
-        title: "Update failed",
-        description: "Please try again.",
+        title: "Cập nhật thất bại",
+        description: "Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -152,8 +213,8 @@ export default function AdminDashboardPage() {
       setIsDocsOpen(true);
     } catch (error) {
       toast({
-        title: "Failed to load documents",
-        description: "Please try again.",
+        title: "Không thể tải tài liệu",
+        description: "Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -169,42 +230,42 @@ export default function AdminDashboardPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Pending recruiters</CardTitle>
+            <CardTitle className="text-sm font-medium">Nhà tuyển dụng chờ duyệt</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">{pendingCount}</div>
-            <p className="text-xs text-muted-foreground">Waiting for approval</p>
+            <p className="text-xs text-muted-foreground">Đang chờ phê duyệt</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Job posts</CardTitle>
+            <CardTitle className="text-sm font-medium">Tin tuyển dụng</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">0</div>
-            <p className="text-xs text-muted-foreground">Placeholder until stats API</p>
+            <div className="text-2xl font-semibold">{jobsTotal}</div>
+            <p className="text-xs text-muted-foreground">12 tháng gần nhất.</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">CV uploads</CardTitle>
+            <CardTitle className="text-sm font-medium">CV tải lên</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">0</div>
-            <p className="text-xs text-muted-foreground">Placeholder until stats API</p>
+            <div className="text-2xl font-semibold">{cvTotal}</div>
+            <p className="text-xs text-muted-foreground">12 tháng gần nhất.</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Compliance</CardTitle>
+            <CardTitle className="text-sm font-medium">Tuân thủ</CardTitle>
             <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">100%</div>
-            <p className="text-xs text-muted-foreground">Admin workflow ready</p>
+            <p className="text-xs text-muted-foreground">Quy trình admin đã sẵn sàng</p>
           </CardContent>
         </Card>
       </section>
@@ -212,11 +273,11 @@ export default function AdminDashboardPage() {
       <section id="analytics" className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Job posting activity</CardTitle>
-            <CardDescription>Monthly job posts (placeholder data).</CardDescription>
+            <CardTitle>Hoạt động đăng tin</CardTitle>
+            <CardDescription>Dữ liệu 12 tháng gần nhất{chartsLoading ? " (đang tải)" : ""}.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={jobsChartConfig} className="h-[260px]">
+          <CardContent className="pt-0">
+            <ChartContainer config={jobsChartConfig} className="h-[260px] w-full -mx-4">
               <AreaChart data={jobActivityData} margin={{ left: 12, right: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" tickLine={false} axisLine={false} />
@@ -235,11 +296,11 @@ export default function AdminDashboardPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>CV upload volume</CardTitle>
-            <CardDescription>Monthly CV uploads (placeholder data).</CardDescription>
+            <CardTitle>Khối lượng CV tải lên</CardTitle>
+            <CardDescription>Dữ liệu 12 tháng gần nhất{chartsLoading ? " (đang tải)" : ""}.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={cvChartConfig} className="h-[260px]">
+          <CardContent className="pt-0">
+            <ChartContainer config={cvChartConfig} className="h-[260px] w-full -mx-4">
               <BarChart data={cvActivityData} margin={{ left: 12, right: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" tickLine={false} axisLine={false} />
@@ -256,38 +317,38 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader className="flex items-center justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-              <CardTitle>Pending recruiter approvals</CardTitle>
-              <CardDescription>Review and approve recruiter onboarding requests.</CardDescription>
+              <CardTitle>Yêu cầu duyệt nhà tuyển dụng</CardTitle>
+              <CardDescription>Rà soát và phê duyệt yêu cầu đăng ký nhà tuyển dụng.</CardDescription>
             </div>
-            <Badge variant="secondary">{pendingCount} pending</Badge>
+            <Badge variant="secondary">{pendingCount} chờ duyệt</Badge>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-                Loading pending recruiters...
+                Đang tải danh sách chờ duyệt...
               </div>
             ) : pendingRecruiters.length === 0 ? (
               <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-                No pending recruiters at the moment.
+                Hiện chưa có nhà tuyển dụng chờ duyệt.
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID</TableHead>
-                    <TableHead>Company</TableHead>
+                    <TableHead>Công ty</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead className="text-right">Hành động</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pendingRecruiters.map((recruiter) => (
                     <TableRow key={recruiter.recruiterId}>
                       <TableCell className="font-medium">#{recruiter.recruiterId}</TableCell>
-                      <TableCell>{recruiter.companyName ?? "Pending profile"}</TableCell>
+                      <TableCell>{recruiter.companyName ?? "Chưa có hồ sơ"}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {recruiter.email ?? "Unknown"}
+                        {recruiter.email ?? "Không rõ"}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{recruiter.status}</Badge>
@@ -300,14 +361,14 @@ export default function AdminDashboardPage() {
                             onClick={() => handleViewDocuments(recruiter)}
                             disabled={docsLoading}
                           >
-                            View docs
+                            Xem hồ sơ
                           </Button>
                           <Button
                             size="sm"
                             onClick={() => handleStatusUpdate(recruiter.recruiterId, "APPROVED")}
                             disabled={isUpdating === recruiter.recruiterId}
                           >
-                            Approve
+                            Duyệt
                           </Button>
                           <Button
                             size="sm"
@@ -315,7 +376,7 @@ export default function AdminDashboardPage() {
                             onClick={() => handleStatusUpdate(recruiter.recruiterId, "REJECTED")}
                             disabled={isUpdating === recruiter.recruiterId}
                           >
-                            Reject
+                            Từ chối
                           </Button>
                         </div>
                       </TableCell>
@@ -332,17 +393,17 @@ export default function AdminDashboardPage() {
       <Dialog open={isDocsOpen} onOpenChange={setIsDocsOpen}>
         <DialogContent className="max-w-lg w-[min(32rem,calc(100vw-2rem))] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Recruiter documents</DialogTitle>
+            <DialogTitle>Tài liệu nhà tuyển dụng</DialogTitle>
             <DialogDescription>
               {selectedRecruiter
-                ? `Recruiter #${selectedRecruiter.recruiterId} documents`
-                : "No recruiter selected"}
+                ? `Tài liệu của nhà tuyển dụng #${selectedRecruiter.recruiterId}`
+                : "Chưa chọn nhà tuyển dụng"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {documents.length === 0 ? (
               <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-                {selectedRecruiter ? "No documents available." : "Select a recruiter to view documents."}
+                {selectedRecruiter ? "Chưa có tài liệu." : "Hãy chọn nhà tuyển dụng để xem tài liệu."}
               </div>
             ) : (
               documents.map((doc) => (
@@ -354,7 +415,7 @@ export default function AdminDashboardPage() {
                     </div>
                     <Button asChild variant="outline" size="sm" className="shrink-0 justify-self-end">
                       <a href={doc.downloadUrl} target="_blank" rel="noreferrer">
-                        Open
+                        Mở
                       </a>
                     </Button>
                   </div>
@@ -368,12 +429,76 @@ export default function AdminDashboardPage() {
       <section id="settings">
         <Card>
           <CardHeader>
-            <CardTitle>Admin settings</CardTitle>
-            <CardDescription>Centralize future admin settings and policies.</CardDescription>
+            <CardTitle>{"C\u00e0i \u0111\u1eb7t qu\u1ea3n tr\u1ecb"}</CardTitle>
+            <CardDescription>{"T\u1eadp trung c\u00e1c thi\u1ebft l\u1eadp v\u00e0 ch\u00ednh s\u00e1ch qu\u1ea3n tr\u1ecb."}</CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center gap-3 text-sm text-muted-foreground">
-            <FolderSearch className="h-4 w-4" />
-            Settings panel coming soon.
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-lg border bg-background p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  {"Ch\u00ednh s\u00e1ch & Quy \u0111\u1ecbnh"}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {"Qu\u1ea3n l\u00fd c\u00e1c ch\u00ednh s\u00e1ch v\u00e0 quy \u0111\u1ecbnh s\u1eed d\u1ee5ng h\u1ec7 th\u1ed1ng."}
+                </p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                  <li>{"\u2022 Quy \u0111\u1ecbnh s\u1eed d\u1ee5ng h\u1ec7 th\u1ed1ng"}</li>
+                  <li>{"\u2022 Ch\u00ednh s\u00e1ch b\u1ea3o m\u1eadt"}</li>
+                  <li>{"\u2022 \u0110i\u1ec1u kho\u1ea3n d\u1ecbch v\u1ee5"}</li>
+                </ul>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline">{"Xem danh s\u00e1ch"}</Button>
+                  <Button size="sm">{"C\u1eadp nh\u1eadt"}</Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-background p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <Users className="h-4 w-4 text-emerald-500" />
+                  {"Qu\u1ea3n tr\u1ecb ng\u01b0\u1eddi d\u00f9ng"}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {"\u0110i\u1ec1u ch\u1ec9nh tham s\u1ed1 li\u00ean quan \u0111\u1ebfn qu\u1ea3n tr\u1ecb ng\u01b0\u1eddi d\u00f9ng v\u00e0 ph\u00e2n quy\u1ec1n."}
+                </p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                  <li>{"\u2022 Vai tr\u00f2 & quy\u1ec1n h\u1ea1n"}</li>
+                  <li>{"\u2022 Quy t\u1eafc x\u00e9t duy\u1ec7t"}</li>
+                  <li>{"\u2022 Gi\u1edbi h\u1ea1n thao t\u00e1c"}</li>
+                </ul>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline">{"Thi\u1ebft l\u1eadp"}</Button>
+                  <Button size="sm">{"Xem log"}</Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-background p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <Activity className="h-4 w-4 text-emerald-500" />
+                  {"V\u1eadn h\u00e0nh & C\u1eadp nh\u1eadt"}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {"Theo d\u00f5i tr\u1ea1ng th\u00e1i v\u1eadn h\u00e0nh v\u00e0 chu\u1ea9n b\u1ecb cho c\u00e1c c\u1eadp nh\u1eadt trong t\u01b0\u01a1ng lai."}
+                </p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                  <li>{"\u2022 Tr\u1ea1ng th\u00e1i d\u1ecbch v\u1ee5"}</li>
+                  <li>{"\u2022 L\u1ecbch b\u1ea3o tr\u00ec"}</li>
+                  <li>{"\u2022 K\u1ebf ho\u1ea1ch n\u00e2ng c\u1ea5p"}</li>
+                </ul>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline">{"Theo d\u00f5i"}</Button>
+                  <Button size="sm">{"L\u00ean l\u1ecbch"}</Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4 text-sm text-muted-foreground dark:border-slate-800 dark:bg-slate-900/40">
+              <FolderSearch className="mt-0.5 h-4 w-4" />
+              <div>
+                <p className="font-medium text-slate-900 dark:text-slate-100">{"Ghi ch\u00fa"}</p>
+                <p>{"B\u1ea3ng c\u00e0i \u0111\u1eb7t s\u1ebd ti\u1ebfp t\u1ee5c m\u1edf r\u1ed9ng khi t\u00edch h\u1ee3p c\u00e1c c\u1ea5u h\u00ecnh m\u1edbi."}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </section>

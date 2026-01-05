@@ -9,6 +9,19 @@ export type Application = {
   appliedAt?: string | null;
   status?: string | null;
   parsedCvId?: string | null;
+  matchingScore?: number | null;
+};
+
+export type ApplicationDetail = {
+  applicationId: string;
+  jobId: number;
+  jobTitle?: string | null;
+  jobSeekerId: number;
+  appliedAt?: string | null;
+  status?: string | null;
+  parsedCvId?: string | null;
+  parsedCvJson?: string | null;
+  matchingScore?: number | null;
 };
 
 type Pagination = {
@@ -65,6 +78,40 @@ export async function listApplications(page = 0, pageSize = 20): Promise<PageLis
   });
   if (!response.data) {
     throw new ApiError(500, "INVALID_RESPONSE", "Application list response missing data.");
+  }
+  return response.data;
+}
+
+export async function getApplicationDetail(
+  applicationId: string,
+  accessToken?: string | null
+): Promise<ApplicationDetail> {
+  const response = await apiRequest<ApplicationDetail>(`/api/applications/${applicationId}`, {
+    method: "GET",
+    accessToken,
+  });
+  if (!response.data) {
+    throw new ApiError(500, "INVALID_RESPONSE", "Application detail response missing data.");
+  }
+  return response.data;
+}
+
+export async function updateApplicationStatus(
+  applicationId: string,
+  status: string,
+  note?: string | null,
+  accessToken?: string | null
+): Promise<Application> {
+  const response = await apiRequest<Application>(`/api/applications/${applicationId}/status`, {
+    method: "PATCH",
+    accessToken,
+    body: {
+      status,
+      note: note ?? null,
+    },
+  });
+  if (!response.data) {
+    throw new ApiError(500, "INVALID_RESPONSE", "Application status response missing data.");
   }
   return response.data;
 }

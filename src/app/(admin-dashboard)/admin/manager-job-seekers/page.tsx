@@ -24,11 +24,11 @@ const PAGE_SIZE = 8;
 const getAccountStatusLabel = (status: AccountStatus) => {
   switch (status) {
     case "ACTIVE":
-      return "Active";
+      return "Hoạt động";
     case "INACTIVE":
-      return "Inactive";
+      return "Không hoạt động";
     case "LOCKED":
-      return "Locked";
+      return "Đã khóa";
     default:
       return status;
   }
@@ -80,8 +80,8 @@ export default function ManageJobSeekersPage() {
       setTotalCount(data.count);
     } catch (error) {
       toast({
-        title: "Failed to load job seekers",
-        description: "Please try again.",
+        title: "Không thể tải ứng viên",
+        description: "Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -106,8 +106,8 @@ export default function ManageJobSeekersPage() {
       await loadJobSeekers();
     } catch (error) {
       toast({
-        title: "Failed to update account",
-        description: "Please try again.",
+        title: "Cập nhật tài khoản thất bại",
+        description: "Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -128,12 +128,12 @@ export default function ManageJobSeekersPage() {
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Job seekers</CardTitle>
-            <CardDescription>Profiles with JOB_SEEKER role.</CardDescription>
+            <CardTitle>Ứng viên</CardTitle>
+            <CardDescription>Hồ sơ có vai trò JOB_SEEKER.</CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Input
-              placeholder="Search by name, email, phone"
+              placeholder="Tìm theo tên, email, số điện thoại"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
@@ -149,12 +149,12 @@ export default function ManageJobSeekersPage() {
               }}
             >
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
                 {accountStatusOptions.map((status) => (
                   <SelectItem key={status} value={status}>
-                    {status === "all" ? "All statuses" : getAccountStatusLabel(status)}
+                    {status === "all" ? "Tất cả trạng thái" : getAccountStatusLabel(status)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -166,29 +166,29 @@ export default function ManageJobSeekersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
-                <TableHead>Name</TableHead>
+                <TableHead>Tên</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Dob</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Address</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Bio</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Ngày sinh</TableHead>
+                <TableHead>Số điện thoại</TableHead>
+                <TableHead>Địa chỉ</TableHead>
+                <TableHead>Ngày tạo</TableHead>
+                <TableHead>Giới thiệu</TableHead>
+                <TableHead>Trạng thái</TableHead>
                 <TableHead>CV</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">Hành động</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={11} className="py-6 text-center text-sm text-muted-foreground">
-                    Loading job seekers...
+                    Đang tải danh sách ứng viên...
                   </TableCell>
                 </TableRow>
               ) : visibleJobSeekers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={11} className="text-center text-sm text-muted-foreground">
-                    No job seekers found.
+                    Không tìm thấy ứng viên.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -214,7 +214,7 @@ export default function ManageJobSeekersPage() {
                         disabled={!jobSeeker.cvUrl}
                         onClick={() => handleViewCv(jobSeeker.cvUrl)}
                       >
-                        View CV
+                        Xem CV
                       </Button>
                     </TableCell>
                     <TableCell className="text-right">
@@ -229,7 +229,7 @@ export default function ManageJobSeekersPage() {
                             : "hover:bg-amber-500 hover:text-white"
                         }
                       >
-                        {jobSeeker.accountStatus === "LOCKED" ? "Unlock" : "Lock"}
+                        {jobSeeker.accountStatus === "LOCKED" ? "Mở khóa" : "Khóa"}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -239,7 +239,7 @@ export default function ManageJobSeekersPage() {
           </Table>
           <AdminTableFooter
             totalCount={totalCount}
-            totalLabel="job seekers"
+            totalLabel="ứng viên"
             page={page}
             pageSize={PAGE_SIZE}
             onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
@@ -251,14 +251,14 @@ export default function ManageJobSeekersPage() {
       <Dialog open={isCvOpen} onOpenChange={setIsCvOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Job Seeker CV</DialogTitle>
-            <DialogDescription>Review the uploaded CV.</DialogDescription>
+            <DialogTitle>CV ứng viên</DialogTitle>
+            <DialogDescription>Xem lại CV đã tải lên.</DialogDescription>
           </DialogHeader>
           {selectedCvUrl ? (
-            <iframe title="Job Seeker CV" src={selectedCvUrl} className="h-[70vh] w-full rounded-md border" />
+            <iframe title="CV ứng viên" src={selectedCvUrl} className="h-[70vh] w-full rounded-md border" />
           ) : (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No CV selected.
+              Chưa chọn CV.
             </div>
           )}
         </DialogContent>

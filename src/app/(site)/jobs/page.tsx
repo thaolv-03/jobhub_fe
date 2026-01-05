@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { addFavorite, listFavorites, removeFavorite } from "@/lib/favorites";
 import { useJobs } from "@/hooks/use-jobs";
-import { useJobCategories } from "@/hooks/use-job-categories";
+import { CATEGORIES } from "@/lib/job-form-data";
 import { useCompanies } from "@/hooks/use-companies";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ApiError } from "@/lib/api-types";
@@ -30,9 +30,9 @@ import { useJobSeekerProfileGate } from "@/contexts/job-seeker-profile-context";
 const PAGE_SIZE = 10;
 
 const LOCATION_OPTIONS = [
-  { value: "ha-noi", label: "Hà Nội" },
-  { value: "da-nang", label: "Đà Nẵng" },
-  { value: "tp-ho-chi-minh", label: "TP Hồ Chí Minh" },
+  { value: "\u0048\u00e0 \u004e\u1ed9\u0069", label: "\u0048\u00e0 \u004e\u1ed9\u0069" },
+  { value: "\u0110\u00e0 \u004e\u1eb5\u006e\u0067", label: "\u0110\u00e0 \u004e\u1eb5\u006e\u0067" },
+  { value: "TP HCM", label: "TP H\u1ed3 Ch\u00ed Minh" },
 ];
 
 const SALARY_RANGES = [
@@ -56,13 +56,7 @@ const SORT_OPTIONS = [
   { value: "title", label: "Tiêu đề" },
 ];
 
-const buildSearchText = (keyword: string, category: string | null) => {
-  const parts = [keyword.trim()];
-  if (category && category !== "all") {
-    parts.push(category);
-  }
-  return parts.filter(Boolean).join(" ");
-};
+const buildSearchText = (keyword: string) => keyword.trim();
 
 const formatSalary = (job: Job) => {
   const min = job.minSalary ?? null;
@@ -114,7 +108,7 @@ export default function JobsPage() {
     }
     if (location) {
       const loc = LOCATION_OPTIONS.find((item) => item.value === location);
-      setSelectedLocations(loc ? [loc.label.toLowerCase()] : []);
+      setSelectedLocations(loc ? [loc.value] : []);
     } else {
       setSelectedLocations([]);
     }
@@ -138,12 +132,16 @@ export default function JobsPage() {
     void loadFavorites();
   }, [loadFavorites]);
 
-  // Get categories
-  const { data: categoryOptions = [] } = useJobCategories();
+  const categoryOptions = React.useMemo(() => CATEGORIES.map((category) => category.name), []);
 
   // Build search request
   const searchRequest = useMemo<JobSearchRequest>(() => {
-    const searchText = buildSearchText(debouncedKeyword, categoryParam);
+    const searchText = buildSearchText(debouncedKeyword);
+    const matchedCategory = categoryParam
+      ? CATEGORIES.find(
+          (category) => category.name.toLowerCase() === categoryParam.trim().toLowerCase()
+        )
+      : null;
     const locationFilters = selectedLocations.map((loc) => loc.trim().toLowerCase()).filter(Boolean);
     const range = SALARY_RANGES.find((item) => item.value === salaryRange);
 
@@ -161,6 +159,7 @@ export default function JobsPage() {
         jobTypes: selectedJobTypes.length > 0 ? selectedJobTypes : undefined,
         salaryMin: range?.min ?? null,
         salaryMax: range?.max ?? null,
+        categoryIds: matchedCategory ? [matchedCategory.id] : undefined,
       },
     };
   }, [debouncedKeyword, categoryParam, selectedLocations, selectedJobTypes, salaryRange, sort, page]);
@@ -198,9 +197,8 @@ export default function JobsPage() {
     if (debouncedKeyword.trim()) {
       params.set("q", debouncedKeyword.trim());
     }
-    const locationValue = LOCATION_OPTIONS.find((item) => item.label.toLowerCase() === selectedLocations[0]);
-    if (locationValue) {
-      params.set("location", locationValue.value);
+        if (selectedLocations[0]) {
+      params.set("location", selectedLocations[0]);
     }
     if (categoryParam) {
       params.set("category", categoryParam);
@@ -209,10 +207,10 @@ export default function JobsPage() {
     router.push(params.toString() ? `/jobs?${params.toString()}` : "/jobs");
   }, [debouncedKeyword, selectedLocations, categoryParam, router]);
 
-  const toggleLocation = useCallback((label: string, checked: boolean) => {
+  const toggleLocation = useCallback((value: string, checked: boolean) => {
     setSelectedLocations((prev) => {
-      if (checked) return [...prev, label.toLowerCase()];
-      return prev.filter((item) => item !== label.toLowerCase());
+      if (checked) return [...prev, value];
+      return prev.filter((item) => item !== value);
     });
     setPage(0);
   }, []);
@@ -292,8 +290,8 @@ export default function JobsPage() {
                         <div key={item.value} className="flex items-center space-x-2">
                           <Checkbox
                             id={`loc-${item.value}`}
-                            checked={selectedLocations.includes(item.label.toLowerCase())}
-                            onCheckedChange={(checked) => toggleLocation(item.label, Boolean(checked))}
+                            checked={selectedLocations.includes(item.value)}
+                            onCheckedChange={(checked) => toggleLocation(item.value, Boolean(checked))}
                           />
                           <Label htmlFor={`loc-${item.value}`}>{item.label}</Label>
                         </div>
@@ -503,3 +501,4 @@ export default function JobsPage() {
     </div>
   );
 }
+

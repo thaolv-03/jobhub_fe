@@ -65,10 +65,10 @@ export default function PostJobPage() {
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <div className="max-w-4xl mx-auto w-full">
-        <Card>
+        <Card className="border-border/60 bg-background/90 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
           <CardHeader>
-            <CardTitle>Đăng tin tuyển dụng mới</CardTitle>
-            <CardDescription>Điền các thông tin chi tiết về vị trí bạn muốn tuyển dụng.</CardDescription>
+            <CardTitle className="dark:text-slate-100">Đăng tin tuyển dụng mới</CardTitle>
+            <CardDescription className="dark:text-slate-300">Điền các thông tin chi tiết về vị trí bạn muốn tuyển dụng.</CardDescription>
           </CardHeader>
           <CardContent>
             <JobForm

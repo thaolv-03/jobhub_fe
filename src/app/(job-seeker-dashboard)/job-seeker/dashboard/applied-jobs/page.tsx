@@ -116,7 +116,7 @@ export default function AppliedJobsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">Dang tai du lieu...</div>
+            <div className="text-center py-12 text-sm text-muted-foreground">Đang tải dữ liệu...</div>
           ) : rows.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>

@@ -174,7 +174,7 @@ function ResetPasswordFlow() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="email@example.com" {...field} disabled={isLoading} />
+                        <Input placeholder="username@gmail.com" {...field} disabled={isLoading} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -194,7 +194,7 @@ function ResetPasswordFlow() {
         <>
           <CardHeader>
             <CardTitle>Xác thực OTP</CardTitle>
-            <CardDescription>Nh?p m? OTP g?m 6 ch? s? ?? ???c g?i ??n {email}.</CardDescription>
+            <CardDescription>Nhập mã OTP gồm 6 chữ số đã được gửi đến {email}.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...otpForm}>

@@ -127,8 +127,8 @@ export default function CompaniesPage() {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <CardTitle className="truncate">{company.companyName}</CardTitle>
-                        <CardDescription className="flex items-center gap-2">
+                        <CardTitle className="break-words text-lg leading-snug">{company.companyName}</CardTitle>
+                        <CardDescription className="mt-1 flex items-center gap-2">
                           <MapPin className="h-4 w-4" />
                           {company.location ?? "Không rõ"}
                         </CardDescription>

@@ -21,24 +21,28 @@ const banners: BannerItem[] = [
   {
     id: "banner-1",
     title: "Khám phá cơ hội mới",
+    imageSrc: "/images/banners/quick-1.png",
     href: "/jobs",
     backgroundClass: "bg-gradient-to-br from-emerald-500/20 via-emerald-200/40 to-transparent",
   },
   {
     id: "banner-2",
     title: "Hệ thống AI gợi ý CV",
+    imageSrc: "/images/banners/quick-2.png",
     href: "/recruiter",
     backgroundClass: "bg-gradient-to-br from-emerald-600/20 via-slate-900/20 to-transparent",
   },
   {
     id: "banner-3",
     title: "Cập nhật hồ sơ nhanh",
+    imageSrc: "/images/banners/quick-3.png",
     href: "/job-seeker/dashboard",
     backgroundClass: "bg-gradient-to-br from-emerald-400/20 via-emerald-100/50 to-transparent",
   },
   {
     id: "banner-4",
     title: "Đăng tin tuyển dụng",
+    imageSrc: "/images/banners/quick-4.png",
     href: "/recruiter",
     backgroundClass: "bg-gradient-to-br from-emerald-700/20 via-emerald-200/40 to-transparent",
   },
@@ -103,7 +107,7 @@ export function BannerSlider() {
                   <Link
                     href={banner.href}
                     className={cn(
-                      "group relative flex h-48 items-end overflow-hidden rounded-2xl border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-md",
+                      "group relative flex aspect-[2/1] items-end overflow-hidden rounded-2xl border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-md",
                       banner.backgroundClass
                     )}
                   >
@@ -112,14 +116,16 @@ export function BannerSlider() {
                         src={banner.imageSrc}
                         alt={banner.title || "Banner"}
                         fill
+                        sizes="(min-width: 768px) 50vw, 100vw"
                         className="object-cover"
                       />
                     ) : null}
-                    <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/30 to-transparent" />
-                    <div className="relative z-10 p-6">
-                      <p className="text-sm font-medium text-primary">JobHub</p>
-                      <h3 className="mt-2 text-xl font-semibold">{banner.title}</h3>
-                      <p className="mt-2 text-sm text-muted-foreground">Khám phá ngay</p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+                    <div className="absolute inset-x-0 bottom-0 h-28 bg-black/70 blur-2xl" />
+                    <div className="relative z-10 p-6 text-white drop-shadow">
+                      <p className="text-sm font-semibold text-emerald-300">JobHub</p>
+                      <h3 className="mt-2 text-xl font-semibold text-white">{banner.title}</h3>
+                      <p className="mt-2 text-sm text-white/80">Khám phá ngay</p>
                     </div>
                   </Link>
                 </div>

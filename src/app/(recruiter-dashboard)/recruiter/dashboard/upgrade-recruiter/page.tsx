@@ -167,8 +167,56 @@ export default function UpgradeRecruiterPage() {
     }
   }, [companyName, form, selectedCompanyName]);
 
-  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const padImageToSquare = (file: File) =>
+    new Promise<File>((resolve) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        const size = Math.max(img.width, img.height);
+        const dx = Math.floor((size - img.width) / 2);
+        const dy = Math.floor((size - img.height) / 2);
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          URL.revokeObjectURL(objectUrl);
+          resolve(file);
+          return;
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
+        ctx.drawImage(img, dx, dy, img.width, img.height);
+        canvas.toBlob(
+          (blob) => {
+            URL.revokeObjectURL(objectUrl);
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            const nextFile = new File([blob], file.name, {
+              type: blob.type || file.type,
+              lastModified: file.lastModified,
+            });
+            resolve(nextFile);
+          },
+          file.type || 'image/png',
+          0.92
+        );
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+
+      img.src = objectUrl;
+    });
+
+  const handleLogoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
     if (!file) {
       return;
     }
@@ -177,7 +225,7 @@ export default function UpgradeRecruiterPage() {
         variant: 'destructive',
         title: TEXT.logoTypeError,
       });
-      event.target.value = '';
+      input.value = '';
       return;
     }
     if (file.size > MAX_LOGO_SIZE_BYTES) {
@@ -185,15 +233,25 @@ export default function UpgradeRecruiterPage() {
         variant: 'destructive',
         title: TEXT.logoSizeError,
       });
-      event.target.value = '';
+      input.value = '';
+      return;
+    }
+
+    const paddedFile = await padImageToSquare(file);
+    if (paddedFile.size > MAX_LOGO_SIZE_BYTES) {
+      toast({
+        variant: 'destructive',
+        title: TEXT.logoSizeError,
+      });
+      input.value = '';
       return;
     }
 
     if (companyLogoPreview) {
       URL.revokeObjectURL(companyLogoPreview);
     }
-    const previewUrl = URL.createObjectURL(file);
-    setCompanyLogoFile(file);
+    const previewUrl = URL.createObjectURL(paddedFile);
+    setCompanyLogoFile(paddedFile);
     setCompanyLogoPreview(previewUrl);
   };
 
@@ -257,31 +315,36 @@ export default function UpgradeRecruiterPage() {
   };
 
   return (
-    <main className="flex min-h-[calc(100vh-113px)] flex-col items-center justify-center gap-4 p-4 md:gap-8 md:p-8">
+    <main className="flex min-h-[calc(100vh-113px)] flex-col items-center justify-center gap-4 bg-slate-50 p-4 md:gap-8 md:p-8 dark:bg-slate-950">
       <div className="w-full max-w-2xl">
-        <Card>
+        <Card className="border-border/60 bg-background/90 shadow-sm backdrop-blur dark:bg-slate-950/70">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-primary">{TEXT.title}</CardTitle>
-            <CardDescription>{TEXT.subtitle}</CardDescription>
+            <CardTitle className="text-2xl font-bold text-primary dark:text-emerald-300">{TEXT.title}</CardTitle>
+            <CardDescription className="dark:text-slate-300">{TEXT.subtitle}</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleUpgradeSubmit)} className="space-y-6">
                 <div className="space-y-2">
-                  <FormLabel>{TEXT.logoLabel}</FormLabel>
+                  <FormLabel className="text-foreground dark:text-slate-200">{TEXT.logoLabel}</FormLabel>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="h-20 w-20 overflow-hidden rounded-lg border bg-muted">
+                    <div className="h-20 w-20 overflow-hidden rounded-lg border border-border/60 bg-muted dark:bg-slate-900">
                       {companyLogoPreview ? (
                         <img src={companyLogoPreview} alt="Company logo preview" className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground dark:text-slate-400">
                           {TEXT.logoEmpty}
                         </div>
                       )}
                     </div>
                     <div className="flex-1 space-y-2">
-                      <Input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoChange} />
-                      <p className="text-xs text-muted-foreground">{TEXT.logoHint}</p>
+                      <Input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={handleLogoChange}
+                        className="bg-white text-slate-800 file:text-slate-700 file:bg-slate-100 file:border-slate-200 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70 dark:file:text-slate-100 dark:file:bg-slate-800/70 dark:file:border-slate-700"
+                      />
+                      <p className="text-xs text-muted-foreground dark:text-slate-400">{TEXT.logoHint}</p>
                     </div>
                   </div>
                 </div>
@@ -290,17 +353,18 @@ export default function UpgradeRecruiterPage() {
                   name="companyName"
                   render={({ field }) => (
                     <FormItem className="relative">
-                      <FormLabel>{TEXT.companyNameLabel}</FormLabel>
+                      <FormLabel className="text-foreground dark:text-slate-200">{TEXT.companyNameLabel}</FormLabel>
                       <FormControl>
                         <Input
                           placeholder={TEXT.companyNamePlaceholder}
                           {...field}
                           disabled={isLoading}
                           onBlur={() => setShowSuggestions(false)}
+                          className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
                         />
                       </FormControl>
                       {showSuggestions && (
-                        <div className="absolute z-20 mt-2 w-full rounded-md border bg-background shadow-lg">
+                        <div className="absolute z-20 mt-2 w-full rounded-md border border-border/60 bg-background shadow-lg dark:border-slate-800 dark:bg-slate-950">
                           {isFetchingSuggestions && (
                             <div className="px-3 py-2 text-xs text-muted-foreground">{TEXT.suggestionLoading}</div>
                           )}
@@ -313,7 +377,7 @@ export default function UpgradeRecruiterPage() {
                                 <li key={item.companyId}>
                                   <button
                                     type="button"
-                                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                                    className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted dark:text-slate-100 dark:hover:bg-slate-900"
                                     onMouseDown={(event) => event.preventDefault()}
                                     onClick={() => {
                                       form.setValue('companyName', item.companyName, {
@@ -342,27 +406,37 @@ export default function UpgradeRecruiterPage() {
                 />
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{TEXT.locationLabel}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={TEXT.locationPlaceholder} {...field} disabled={isLoading} />
-                        </FormControl>
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground dark:text-slate-200">{TEXT.locationLabel}</FormLabel>
+                      <FormControl>
+                          <Input
+                            placeholder={TEXT.locationPlaceholder}
+                            {...field}
+                            disabled={isLoading}
+                            className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
+                          />
+                      </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <FormField
-                    control={form.control}
-                    name="website"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{TEXT.websiteLabel}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={TEXT.websitePlaceholder} {...field} disabled={isLoading} />
-                        </FormControl>
+                  control={form.control}
+                  name="website"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground dark:text-slate-200">{TEXT.websiteLabel}</FormLabel>
+                      <FormControl>
+                          <Input
+                            placeholder={TEXT.websitePlaceholder}
+                            {...field}
+                            disabled={isLoading}
+                            className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
+                          />
+                      </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -373,12 +447,13 @@ export default function UpgradeRecruiterPage() {
                   name="introduction"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{TEXT.introductionLabel}</FormLabel>
+                      <FormLabel className="text-foreground dark:text-slate-200">{TEXT.introductionLabel}</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder={TEXT.introductionPlaceholder}
                           {...field}
                           disabled={isLoading}
+                          className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
                         />
                       </FormControl>
                       <FormMessage />
@@ -387,27 +462,37 @@ export default function UpgradeRecruiterPage() {
                 />
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <FormField
-                    control={form.control}
-                    name="position"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{TEXT.positionLabel}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={TEXT.positionPlaceholder} {...field} disabled={isLoading} />
-                        </FormControl>
+                  control={form.control}
+                  name="position"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground dark:text-slate-200">{TEXT.positionLabel}</FormLabel>
+                      <FormControl>
+                          <Input
+                            placeholder={TEXT.positionPlaceholder}
+                            {...field}
+                            disabled={isLoading}
+                            className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
+                          />
+                      </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{TEXT.phoneLabel}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={TEXT.phonePlaceholder} {...field} disabled={isLoading} />
-                        </FormControl>
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground dark:text-slate-200">{TEXT.phoneLabel}</FormLabel>
+                      <FormControl>
+                          <Input
+                            placeholder={TEXT.phonePlaceholder}
+                            {...field}
+                            disabled={isLoading}
+                            className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
+                          />
+                      </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -422,7 +507,7 @@ export default function UpgradeRecruiterPage() {
               </form>
             </Form>
           </CardContent>
-          <CardFooter className="text-center text-xs text-muted-foreground">
+          <CardFooter className="text-center text-xs text-muted-foreground dark:text-slate-400">
             {TEXT.footer}
           </CardFooter>
         </Card>

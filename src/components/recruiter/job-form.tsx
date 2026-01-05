@@ -75,6 +75,7 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [categorySelectValue, setCategorySelectValue] = React.useState("");
   const [tagSelectValue, setTagSelectValue] = React.useState("");
+  const [skillSearch, setSkillSearch] = React.useState("");
   const resolvedDefaultValues = React.useMemo(
     () => ({ ...defaultValues, ...initialValues }),
     [initialValues]
@@ -107,9 +108,13 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tiêu đề công việc</FormLabel>
+              <FormLabel className="text-slate-900 dark:text-slate-200">Tiêu đề công việc</FormLabel>
               <FormControl>
-                <Input placeholder="Ví dụ: Kỹ sư phần mềm (ReactJS, NodeJS)" {...field} />
+                <Input
+                  placeholder="Ví dụ: Kỹ sư phần mềm (ReactJS, NodeJS)"
+                  {...field}
+                  className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -122,16 +127,16 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
             name="location"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Địa điểm</FormLabel>
+                <FormLabel className="text-slate-900 dark:text-slate-200">Địa điểm</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value ?? ""}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:border-slate-700/70">
                       <SelectValue placeholder="Chọn thành phố" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700">
                     {LOCATION_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
+                      <SelectItem key={option.value} value={option.value} className="text-slate-900 dark:text-slate-100">
                         {option.label}
                       </SelectItem>
                     ))}
@@ -146,19 +151,19 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
             name="job_type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Loại hình công việc</FormLabel>
+                <FormLabel className="text-slate-900 dark:text-slate-200">Loại hình công việc</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value ?? ""}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:border-slate-700/70">
                       <SelectValue placeholder="Chọn loại hình" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value="FULL_TIME">Toàn thời gian</SelectItem>
-                    <SelectItem value="PART_TIME">Bán thời gian</SelectItem>
-                    <SelectItem value="CONTRACT">Hợp đồng</SelectItem>
-                    <SelectItem value="INTERN">Thực tập</SelectItem>
-                    <SelectItem value="FREELANCE">Freelance</SelectItem>
+                  <SelectContent className="bg-white dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700">
+                    <SelectItem value="FULL_TIME" className="text-slate-900 dark:text-slate-100">Toàn thời gian</SelectItem>
+                    <SelectItem value="PART_TIME" className="text-slate-900 dark:text-slate-100">Bán thời gian</SelectItem>
+                    <SelectItem value="CONTRACT" className="text-slate-900 dark:text-slate-100">Hợp đồng</SelectItem>
+                    <SelectItem value="INTERN" className="text-slate-900 dark:text-slate-100">Thực tập</SelectItem>
+                    <SelectItem value="FREELANCE" className="text-slate-900 dark:text-slate-100">Freelance</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -170,9 +175,14 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
             name="min_salary"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Lương tối thiểu (triệu VND)</FormLabel>
+                <FormLabel className="text-slate-900 dark:text-slate-200">Lương tối thiểu (triệu VND)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Ví dụ: 20" {...field} />
+                  <Input
+                    type="number"
+                    placeholder="Ví dụ: 20"
+                    {...field}
+                    className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -183,9 +193,14 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
             name="max_salary"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Lương tối đa (triệu VND)</FormLabel>
+                <FormLabel className="text-slate-900 dark:text-slate-200">Lương tối đa (triệu VND)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Ví dụ: 50" {...field} />
+                  <Input
+                    type="number"
+                    placeholder="Ví dụ: 50"
+                    {...field}
+                    className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -196,15 +211,15 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
             name="deadline"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Hạn nộp hồ sơ</FormLabel>
+                <FormLabel className="text-slate-900 dark:text-slate-200">Hạn nộp hồ sơ</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
                         variant={"outline"}
                         className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
+                          "w-full pl-3 text-left font-normal dark:bg-slate-900/70 dark:text-slate-100 dark:border-slate-700",
+                          !field.value && "text-muted-foreground dark:text-slate-400"
                         )}
                       >
                         {field.value ? format(field.value, "PPP") : <span>Chọn ngày</span>}
@@ -212,7 +227,7 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto border border-slate-200 bg-white p-0 shadow-md dark:border-slate-700 dark:bg-slate-900" align="start">
                     <Calendar
                       mode="single"
                       selected={field.value}
@@ -236,7 +251,7 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
             const selectedCategories = CATEGORIES.filter((category) => selectedIds.includes(category.id));
             return (
               <FormItem>
-                <FormLabel>Danh mục</FormLabel>
+                <FormLabel className="text-slate-900 dark:text-slate-200">Danh mục</FormLabel>
                 <Select
                   value={categorySelectValue}
                   onValueChange={(value) => {
@@ -253,13 +268,13 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
                   }}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:border-slate-700/70">
                       <SelectValue placeholder="Chọn danh mục" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700">
                     {CATEGORIES.map((category) => (
-                      <SelectItem key={category.id} value={String(category.id)}>
+                      <SelectItem key={category.id} value={String(category.id)} className="text-slate-900 dark:text-slate-100">
                         {category.name}
                       </SelectItem>
                     ))}
@@ -268,13 +283,17 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
                 {selectedCategories.length > 0 ? (
                   <div className="flex flex-wrap gap-2 pt-2">
                     {selectedCategories.map((category) => (
-                      <Badge key={category.id} variant="secondary" className="flex items-center gap-1">
+                      <Badge
+                        key={category.id}
+                        variant="secondary"
+                        className="flex items-center gap-1 bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                      >
                         <span>{category.name}</span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-5 w-5"
+                          className="h-5 w-5 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
                           onClick={() => {
                             field.onChange(selectedIds.filter((id) => id !== category.id));
                           }}
@@ -297,9 +316,51 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
           render={({ field }) => {
             const selectedIds = field.value ?? [];
             const selectedTags = JOB_TAGS.filter((tag) => selectedIds.includes(tag.id));
+            const normalizedQuery = skillSearch.trim().toLowerCase();
+            const filteredTags = normalizedQuery
+              ? JOB_TAGS.filter(
+                  (tag) =>
+                    !selectedIds.includes(tag.id) &&
+                    tag.name.toLowerCase().includes(normalizedQuery)
+                )
+              : [];
             return (
               <FormItem>
-                <FormLabel>Kỹ năng yêu cầu</FormLabel>
+                <FormLabel className="text-slate-900 dark:text-slate-200">Kỹ năng yêu cầu</FormLabel>
+                <Input
+                  value={skillSearch}
+                  onChange={(event) => {
+                    setSkillSearch(event.target.value);
+                  }}
+                  placeholder="Tìm kiếm kỹ năng sau đó nhấn vào ô Chọn kỹ năng..."
+                  className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
+                />
+                {normalizedQuery ? (
+                  <div className="mt-2 max-h-56 overflow-auto rounded-md border bg-white p-1 shadow-sm dark:border-slate-700/70 dark:bg-slate-900">
+                    {filteredTags.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
+                        No skills found
+                      </div>
+                    ) : (
+                      filteredTags.map((tag) => (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          className="flex w-full items-center rounded-sm px-3 py-2 text-left text-sm text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+                          onClick={() => {
+                            if (!selectedIds.includes(tag.id)) {
+                              field.onChange([...selectedIds, tag.id]);
+                            }
+                            setSkillSearch("");
+                          }}
+                        >
+                          {tag.name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+
                 <Select
                   value={tagSelectValue}
                   onValueChange={(value) => {
@@ -313,16 +374,17 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
                       field.onChange([...selectedIds, id]);
                     }
                     setTagSelectValue("");
+                    setSkillSearch("");
                   }}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:border-slate-700/70">
                       <SelectValue placeholder="Chọn kỹ năng" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700">
                     {JOB_TAGS.map((tag) => (
-                      <SelectItem key={tag.id} value={String(tag.id)}>
+                      <SelectItem key={tag.id} value={String(tag.id)} className="text-slate-900 dark:text-slate-100">
                         {tag.name}
                       </SelectItem>
                     ))}
@@ -331,13 +393,17 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
                 {selectedTags.length > 0 ? (
                   <div className="flex flex-wrap gap-2 pt-2">
                     {selectedTags.map((tag) => (
-                      <Badge key={tag.id} variant="secondary" className="flex items-center gap-1">
+                      <Badge
+                        key={tag.id}
+                        variant="secondary"
+                        className="flex items-center gap-1 bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                      >
                         <span>{tag.name}</span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-5 w-5"
+                          className="h-5 w-5 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
                           onClick={() => {
                             field.onChange(selectedIds.filter((id) => id !== tag.id));
                           }}
@@ -359,10 +425,10 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
           name="requirements"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Yêu cầu kỹ năng</FormLabel>
+              <FormLabel className="text-slate-900 dark:text-slate-200">Yêu cầu kỹ năng</FormLabel>
               <FormControl>
                 <Textarea
-                  className="min-h-32"
+                  className="min-h-32 bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
                   placeholder="Nhập yêu cầu kỹ năng (mỗi dòng là một yêu cầu)"
                   {...field}
                 />
@@ -377,9 +443,13 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Mô tả công việc</FormLabel>
+              <FormLabel className="text-slate-900 dark:text-slate-200">Mô tả công việc</FormLabel>
               <FormControl>
-                <Textarea className="min-h-32" placeholder="Mô tả chi tiết về công việc, trách nhiệm, yêu cầu..." {...field} />
+                <Textarea
+                  className="min-h-32 bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
+                  placeholder="Mô tả chi tiết về công việc, trách nhiệm, yêu cầu..."
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -388,7 +458,7 @@ export function JobForm({ initialValues, onSubmit, submitLabel = "Đăng tin", o
 
         <div className="flex justify-end gap-2">
           {onCancel ? (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" onClick={onCancel} className="dark:bg-slate-900/70 dark:text-slate-100 dark:border-slate-700">
               Hủy
             </Button>
           ) : null}

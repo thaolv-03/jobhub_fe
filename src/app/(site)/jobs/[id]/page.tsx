@@ -26,10 +26,10 @@ const formatSalary = (job: Job) => {
     return `${min} triệu - ${max} triệu`;
   }
   if (min != null) {
-    return `T? ${min} triệu`;
+    return `Từ ${min} triệu`;
   }
   if (max != null) {
-    return `??n ${max} triệu`;
+    return `Đến ${max} triệu`;
   }
   return "Thương lượng";
 };

@@ -10,6 +10,10 @@ import {
   JobSeekerProfile,
   createJobSeekerProfile,
   fetchJobSeekerProfile,
+  fetchLatestCvOnline,
+  parseJobSeekerCv,
+  ParsedCvDTO,
+  saveCvOnline,
   uploadJobSeekerCv,
 } from "@/lib/job-seeker-profile";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +25,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from "@/hooks/use-auth";
 import { updateAccount } from "@/lib/auth-storage";
 import { refreshToken } from "@/lib/auth";
+import { CvOnlineDialog, buildCvOnlineDefaults, buildParsedDataFromValues, type CvOnlineFormValues, type CvOnlineMeta } from "@/components/job-seeker/cv-online-dialog";
 
 type ApplyIntent = {
   type: "APPLY_JOB";
@@ -75,9 +80,17 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
   const [intent, setIntent] = useState<GateIntent | null>(null);
   const [applyJobId, setApplyJobId] = useState<string | null>(null);
   const [applyJobTitle, setApplyJobTitle] = useState<string | undefined>(undefined);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isApplying, setIsApplying] = useState(false);
-  const [isUploadingCv, setIsUploadingCv] = useState(false);
+  const [cvOnlineLatest, setCvOnlineLatest] = useState<ParsedCvDTO | null>(null);
+  const [cvOnlineMeta, setCvOnlineMeta] = useState<CvOnlineMeta | null>(null);
+  const [cvOnlineFileName, setCvOnlineFileName] = useState<string | null>(null);
+  const [cvOnlineFile, setCvOnlineFile] = useState<File | null>(null);
+  const [isCvOnlineOpen, setIsCvOnlineOpen] = useState(false);
+  const [isCvParsing, setIsCvParsing] = useState(false);
+  const [isCvOnlineSaving, setIsCvOnlineSaving] = useState(false);
+  const [isCvOnlineLoading, setIsCvOnlineLoading] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isConfirmAccepted, setIsConfirmAccepted] = useState(false);
 
   const inflightRef = useRef<Promise<JobSeekerProfile | null> | null>(null);
   const pendingResolveRef = useRef<((result: EnsureProfileResult) => void) | null>(null);
@@ -91,6 +104,10 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
       birthDate: "",
       bio: "",
     },
+  });
+
+  const cvOnlineForm = useForm<CvOnlineFormValues>({
+    defaultValues: buildCvOnlineDefaults(null),
   });
 
   const loadProfileOnce = useCallback(async () => {
@@ -119,11 +136,35 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
     return inflightRef.current;
   }, [hasProfile, profile]);
 
-  const openApplyDialog = useCallback((nextIntent: ApplyIntent) => {
+  const openApplyDialog = useCallback(async (nextIntent: ApplyIntent) => {
     setApplyJobId(nextIntent.jobId);
     setApplyJobTitle(nextIntent.jobTitle);
-    setIsApplyOpen(true);
-  }, []);
+    setIsApplyOpen(false);
+    setIsConfirmOpen(false);
+    setIsConfirmAccepted(false);
+    setIsCvOnlineOpen(false);
+    try {
+      const latest = await fetchLatestCvOnline();
+      if (latest?.cvId) {
+        setCvOnlineLatest(latest);
+        setIsConfirmOpen(true);
+        return;
+      }
+      setCvOnlineLatest(null);
+      setCvOnlineMeta(null);
+      setCvOnlineFileName(null);
+      setCvOnlineFile(null);
+      cvOnlineForm.reset(buildCvOnlineDefaults(null));
+      setIsCvOnlineOpen(true);
+    } catch (error) {
+      setCvOnlineLatest(null);
+      toast({
+        title: "Không tải được CV Online",
+        description: "Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    }
+  }, [cvOnlineForm, toast]);
 
   const resolvePending = useCallback((value: EnsureProfileResult) => {
     if (pendingResolveRef.current) {
@@ -167,7 +208,7 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
           }
 
           if (nextIntent.type === "APPLY_JOB") {
-            openApplyDialog(nextIntent);
+            await openApplyDialog(nextIntent);
           } else if (nextIntent.type === "OPEN_PROFILE") {
             router.push("/job-seeker/dashboard");
           }
@@ -209,11 +250,160 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
     if (!open) {
       setApplyJobId(null);
       setApplyJobTitle(undefined);
-      setSelectedFile(null);
       setIsApplying(false);
-      setIsUploadingCv(false);
+      setIsConfirmAccepted(false);
     }
   }, []);
+
+  const handleCvOnlineClose = useCallback((open: boolean) => {
+    setIsCvOnlineOpen(open);
+    if (!open) {
+      setIsCvParsing(false);
+      setIsCvOnlineSaving(false);
+      setCvOnlineMeta(null);
+      setCvOnlineFileName(null);
+      setCvOnlineFile(null);
+      cvOnlineForm.reset(buildCvOnlineDefaults(null));
+      if (!cvOnlineLatest?.cvId) {
+        setApplyJobId(null);
+        setApplyJobTitle(undefined);
+      }
+    }
+  }, [cvOnlineForm, cvOnlineLatest]);
+
+  const handleCvParseUpload = async (file: File) => {
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/png",
+      "image/jpeg",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Loi", description: "Chỉ hỗ trợ PDF, DOC, DOCX, PNG, JPG.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "Loi", description: "Kích thước file vượt quá 10MB.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setIsCvParsing(true);
+      const response = await parseJobSeekerCv(file);
+      const parsedData = response.parsedData && typeof response.parsedData === "object" ? response.parsedData : {};
+      setCvOnlineMeta({ fileKey: response.fileKey, rawText: response.rawText, parsedData });
+      setCvOnlineFileName(file.name);
+      setCvOnlineFile(file);
+      cvOnlineForm.reset(buildCvOnlineDefaults(parsedData));
+      toast({ title: "Thành công", description: "Đã phân tích CV. Vui lòng kiểm tra và chỉnh sửa." });
+    } catch (error) {
+      const apiError = error as ApiError;
+      toast({
+        title: "Phân tích CV thất bại",
+        description: apiError.message ?? "Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCvParsing(false);
+    }
+  };
+
+  const loadLatestCvOnline = useCallback(async () => {
+    if (isCvOnlineLoading) return null;
+    try {
+      setIsCvOnlineLoading(true);
+      const latest = cvOnlineLatest ?? (await fetchLatestCvOnline());
+      if (!latest) {
+        setCvOnlineMeta(null);
+        setCvOnlineFileName(null);
+        cvOnlineForm.reset(buildCvOnlineDefaults(null));
+        return null;
+      }
+      const parsedData = latest.parsedData && typeof latest.parsedData === "object" ? latest.parsedData : {};
+      setCvOnlineLatest(latest);
+      setCvOnlineMeta({
+        fileKey: latest.fileUrl ?? "",
+        rawText: latest.extractedText ?? "",
+        parsedData: parsedData as Record<string, unknown>,
+      });
+      setCvOnlineFileName(latest.fileUrl ?? "CV Online");
+      cvOnlineForm.reset(buildCvOnlineDefaults(parsedData as Record<string, unknown>));
+      return latest;
+    } catch (error) {
+      const apiError = error as ApiError;
+      toast({
+        title: "Không tải được CV Online",
+        description: apiError.message ?? "Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsCvOnlineLoading(false);
+    }
+  }, [cvOnlineForm, cvOnlineLatest, isCvOnlineLoading, toast]);
+
+  const handleCvOnlineSave = async (values: CvOnlineFormValues) => {
+    if (!cvOnlineMeta?.fileKey || !cvOnlineMeta?.rawText) {
+      toast({ title: "Chưa có CV", description: "Vui lòng tải CV để phân tích trước.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setIsCvOnlineSaving(true);
+      if (cvOnlineFile) {
+        try {
+          const updatedProfile = await uploadJobSeekerCv(cvOnlineFile);
+          setProfile((current) => (current ? { ...current, cvUrl: updatedProfile.cvUrl ?? current.cvUrl } : current));
+        } catch (uploadError) {
+          const apiError = uploadError as ApiError;
+          toast({
+            title: "Tải CV thất bại",
+            description: apiError.message ?? "Vui lòng thử lại sau.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      const parsedData = buildParsedDataFromValues(values);
+      const saved = await saveCvOnline({
+        fileKey: cvOnlineMeta.fileKey,
+        rawText: cvOnlineMeta.rawText,
+        parsedData,
+      });
+      setCvOnlineMeta((current) => (current ? { ...current, parsedData } : current));
+      setCvOnlineLatest(saved);
+      setCvOnlineFile(null);
+      setIsCvOnlineOpen(false);
+      setIsConfirmOpen(true);
+      toast({ title: "Đã lưu CV online", description: "Thông tin CV online đã được lưu." });
+    } catch (error) {
+      const apiError = error as ApiError;
+      toast({
+        title: "Lưu CV online thất bại",
+        description: apiError.message ?? "Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCvOnlineSaving(false);
+    }
+  };
+
+  const handleConfirmClose = (open: boolean) => {
+    setIsConfirmOpen(open);
+    if (!open) {
+      setIsConfirmAccepted(false);
+      setApplyJobId(null);
+      setApplyJobTitle(undefined);
+    }
+  };
+
+  const handleConfirmAccept = () => {
+    setIsConfirmAccepted(true);
+    setIsConfirmOpen(false);
+    setIsApplyOpen(true);
+  };
 
   const handleProfileSubmit = useCallback(
     async (values: ProfileFormValues) => {
@@ -259,7 +449,7 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
         form.reset();
 
         if (intent?.type === "APPLY_JOB") {
-          openApplyDialog(intent);
+          await openApplyDialog(intent);
         } else if (intent?.type === "OPEN_PROFILE") {
           router.push("/job-seeker/dashboard");
         }
@@ -281,47 +471,14 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
     if (!applyJobId) {
       return;
     }
+    if (!isConfirmAccepted || !cvOnlineLatest?.cvId) {
+      return;
+    }
 
     try {
       setIsApplying(true);
-      let nextProfile = profile;
-
-      if (!nextProfile?.cvUrl) {
-        if (!selectedFile) {
-          toast({
-            title: "Chưa có CV",
-            description: "Vui lòng chọn CV để tiếp tục.",
-            variant: "destructive",
-          });
-          setIsApplying(false);
-          return;
-        }
-        if (selectedFile.type !== "application/pdf") {
-          toast({
-            title: "CV không hợp lệ",
-            description: "Vui lòng chọn file PDF.",
-            variant: "destructive",
-          });
-          setIsApplying(false);
-          return;
-        }
-        if (selectedFile.size > 10 * 1024 * 1024) {
-          toast({
-            title: "CV quá lớn",
-            description: "Kích thước file không được vượt quá 10MB.",
-            variant: "destructive",
-          });
-          setIsApplying(false);
-          return;
-        }
-        setIsUploadingCv(true);
-        nextProfile = await uploadJobSeekerCv(selectedFile);
-        setProfile(nextProfile);
-        setIsUploadingCv(false);
-      }
-
       await applyToJob(applyJobId, {
-        parsedCvId: nextProfile?.cvId ?? null,
+        parsedCvId: cvOnlineLatest.cvId,
       });
       toast({
         title: "Ứng tuyển thành công",
@@ -329,18 +486,17 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
       });
       setIsApplyOpen(false);
       setApplyJobId(null);
-      setSelectedFile(null);
-      setIsApplying(false);
+      setIsConfirmAccepted(false);
     } catch (error) {
-      setIsUploadingCv(false);
-      setIsApplying(false);
       toast({
         title: "Ứng tuyển thất bại",
         description: "Vui lòng thử lại sau.",
         variant: "destructive",
       });
+    } finally {
+      setIsApplying(false);
     }
-  }, [applyJobId, profile, selectedFile, toast]);
+  }, [applyJobId, cvOnlineLatest, isConfirmAccepted, toast]);
 
   const value = useMemo(
     () => ({
@@ -394,7 +550,7 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Địa chỉ/Thành phố</FormLabel>
+                    <FormLabel>Địa chỉ</FormLabel>
                     <FormControl>
                       <Input placeholder="TP. Hồ Chí Minh" {...field} />
                     </FormControl>
@@ -420,7 +576,7 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
                 name="bio"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Giới thiệu bản thân</FormLabel>
+                    <FormLabel>Giới thiệu bản thân</FormLabel>
                     <FormControl>
                       <Textarea placeholder="Tóm tắt kinh nghiệm và mục tiêu nghề nghiệp..." {...field} />
                     </FormControl>
@@ -430,7 +586,7 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
               />
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button type="button" variant="outline" onClick={() => handleCreateClose(false)} disabled={form.formState.isSubmitting}>
-                  Huỷ
+                  Hủy
                 </Button>
                 <Button type="submit" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? "Đang lưu..." : "Lưu thông tin"}
@@ -441,58 +597,80 @@ export function JobSeekerProfileGateProvider({ children }: { children: React.Rea
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isConfirmOpen} onOpenChange={handleConfirmClose}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Xác nhận ứng tuyển</DialogTitle>
+            <DialogDescription>
+              Bạn có muốn sử dụng CV Online hiện tại để ứng tuyển cho công việc này không?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" type="button" onClick={() => handleConfirmClose(false)}>
+              Hủy
+            </Button>
+            <Button type="button" onClick={handleConfirmAccept} disabled={!cvOnlineLatest?.cvId}>
+              Ứng tuyển
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isApplyOpen} onOpenChange={handleApplyClose}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>Ứng tuyển ngay</DialogTitle>
+            <DialogTitle>Ứng tuyển ngay</DialogTitle>
             <DialogDescription>
               {applyJobTitle ? `Ứng tuyển vị trí: ${applyJobTitle}` : "Hoàn tất hồ sơ ứng tuyển của bạn."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {profile?.cvUrl ? (
-              <div className="rounded-lg border p-4">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">CV hiện có</p>
-                  <p className="text-sm text-muted-foreground">
-                    {profile.cvName ?? "CV đã tải lên"}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button asChild variant="outline" size="sm">
-                    <a href={profile.cvUrl} target="_blank" rel="noreferrer">
-                      Xem CV
-                    </a>
-                  </Button>
-                  <Button size="sm" onClick={handleApplySubmit} disabled={isApplying}>
-                    Dùng CV này để ứng tuyển
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Tải CV của bạn</label>
-                <Input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Chấp nhận file PDF, tối đa 10MB. File sẽ được tải lên và dùng để ứng tuyển.
+            <div className="rounded-lg border p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">CV Online</p>
+                <p className="text-sm text-muted-foreground">
+                  {cvOnlineLatest?.fileUrl ? "CV online đã lưu" : "CV online sẵn sàng"}
                 </p>
               </div>
-            )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={async () => {
+                    setIsApplyOpen(false);
+                    await loadLatestCvOnline();
+                    setIsCvOnlineOpen(true);
+                  }}
+                >
+                  Cập nhật CV Online
+                </Button>
+              </div>
+            </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" type="button" onClick={() => handleApplyClose(false)} disabled={isApplying}>
-              Huỷ
+              Hủy
             </Button>
-            <Button type="button" onClick={handleApplySubmit} disabled={isApplying || isUploadingCv}>
-              {isUploadingCv ? "Đang tải CV..." : isApplying ? "Đang gửi..." : "Gửi hồ sơ ứng tuyển"}
+            <Button type="button" onClick={handleApplySubmit} disabled={isApplying || !cvOnlineLatest?.cvId}>
+              {isApplying ? "Đang gửi..." : "Gửi hồ sơ ứng tuyển"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CvOnlineDialog
+        open={isCvOnlineOpen}
+        onOpenChange={handleCvOnlineClose}
+        form={cvOnlineForm}
+        cvOnlineMeta={cvOnlineMeta}
+        cvOnlineFileName={cvOnlineFileName}
+        isParsing={isCvParsing}
+        isSaving={isCvOnlineSaving}
+        isLoading={isCvOnlineLoading}
+        onParseFile={handleCvParseUpload}
+        onSave={handleCvOnlineSave}
+      />
     </JobSeekerProfileGateContext.Provider>
   );
 }
@@ -504,4 +682,15 @@ export function useJobSeekerProfileGate() {
   }
   return context;
 }
+
+
+
+
+
+
+
+
+
+
+
 

@@ -19,15 +19,15 @@ const formatSalary = (job: Job) => {
   const min = job.minSalary ?? null;
   const max = job.maxSalary ?? null;
   if (min != null && max != null) {
-    return `${min} triÃªÌ£u - ${max} triÃªÌ£u`;
+    return `${min} triệu - ${max} triệu`;
   }
   if (min != null) {
-    return `T? ${min} triÃªÌ£u`;
+    return `Từ ${min} triệu`;
   }
   if (max != null) {
-    return `??n ${max} triÃªÌ£u`;
+    return `Đến ${max} triệu`;
   }
-  return "ThÆ°Æ¡ng lÆ°á»£ng";
+  return "Thương lượng";
 };
 
 type SavedJobRow = Job & { favoriteId?: number };
@@ -86,14 +86,14 @@ export default function SavedJobsPage() {
       await removeFavorite(jobId);
       setSavedJobs((prev) => prev.filter((job) => job.jobId != jobId));
       toast({
-        title: "ÄÃ£ bá» lÆ°u",
-        description: `ÄÃ£ bá» lÆ°u cÃ´ng viá»‡c "${jobTitle}".`,
+        title: "Đã bỏ lưu",
+        description: `Đã bỏ lưu công việc "${jobTitle}".`,
       });
     } catch (error) {
       const apiError = error as ApiError;
       toast({
         variant: "destructive",
-        title: "KhÃ´ng thá»ƒ bá» lÆ°u",
+        title: "Không thể bỏ lưu",
         description: apiError.message,
       });
     }
@@ -105,11 +105,11 @@ export default function SavedJobsPage() {
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle>Viec da luu</CardTitle>
+              <CardTitle>Việc đã lưu</CardTitle>
               <CardDescription>
                 {savedJobs.length > 0
-                  ? `Ban co ${savedJobs.length} viec da luu. Dung bo lo co hoi ung tuyen!`
-                  : "Ban chua luu cong viec nao."}
+                  ? `Bạn có ${savedJobs.length} việc đã lưu. Đừng bỏ lỡ cơ hội ứng tuyển!`
+                  : "Bạn chưa lưu công việc nào."}
               </CardDescription>
             </div>
             <div className="relative w-full md:w-72">
@@ -117,7 +117,7 @@ export default function SavedJobsPage() {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Tim kiem viec da luu"
+                placeholder="Tìm kiếm việc đã lưu"
                 className="pl-9"
               />
             </div>
@@ -125,7 +125,7 @@ export default function SavedJobsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">Dang tai du lieu...</div>
+            <div className="text-center py-12 text-sm text-muted-foreground">Đang tải dữ liệu...</div>
           ) : savedJobs.length > 0 ? (
             <div className="space-y-4">
               {savedJobs.map((job) => {
@@ -165,7 +165,7 @@ export default function SavedJobsPage() {
                       </div>
                       <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
                         <Button asChild className="w-full md:w-auto">
-                          <Link href={`/jobs/${job.jobId}`}>Ung tuyen ngay</Link>
+                          <Link href={`/jobs/${job.jobId}`}>Ứng tuyển ngay</Link>
                         </Button>
                         <Button
                           variant="outline"
@@ -174,7 +174,7 @@ export default function SavedJobsPage() {
                           className="w-full md:w-10"
                         >
                           <BookmarkX className="h-5 w-5" />
-                          <span className="sr-only">Bo luu</span>
+                          <span className="sr-only">Bỏ lưu</span>
                         </Button>
                       </div>
                     </div>
@@ -185,10 +185,10 @@ export default function SavedJobsPage() {
           ) : (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
               <Bookmark className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">Chua co viec duoc luu</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Luu lai cac viec ban quan tam de xem lai sau.</p>
+              <h3 className="mt-4 text-lg font-semibold">Chưa có việc được lưu</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Lưu lại các việc bạn quan tâm để xem lại sau.</p>
               <Button asChild className="mt-6">
-                <Link href="/jobs">Kham pha viec lam</Link>
+                <Link href="/jobs">Khám phá việc làm</Link>
               </Button>
             </div>
           )}

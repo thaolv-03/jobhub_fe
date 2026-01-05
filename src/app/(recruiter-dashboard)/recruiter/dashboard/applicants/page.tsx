@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -32,6 +32,8 @@ export default function RecruiterApplicantsPage() {
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
+  const lastTokenRef = useRef<string | null>(null);
 
   const formatDate = (value?: string | null) => {
     if (!value) return "-";
@@ -45,8 +47,14 @@ export default function RecruiterApplicantsPage() {
       if (!accessToken) {
         setIsLoading(false);
         setJobs([]);
+        hasLoadedRef.current = false;
+        lastTokenRef.current = null;
         return;
       }
+      if (hasLoadedRef.current && lastTokenRef.current === accessToken) {
+        return;
+      }
+      lastTokenRef.current = accessToken;
       setIsLoading(true);
       setErrorMessage(null);
       try {
@@ -73,6 +81,7 @@ export default function RecruiterApplicantsPage() {
         }));
 
         setJobs(rows);
+        hasLoadedRef.current = true;
       } catch (error) {
         const apiError = error as ApiError;
         setErrorMessage(apiError.message || "Không thể tải danh sách tin tuyển dụng.");
@@ -86,40 +95,42 @@ export default function RecruiterApplicantsPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-      <Card>
+      <Card className="border-border/60 bg-background/95 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/60">
         <CardHeader>
-          <CardTitle>Quản lý ứng viên</CardTitle>
-          <CardDescription>Chọn tin tuyển dụng để xem danh sách ứng viên.</CardDescription>
+          <CardTitle className="text-slate-900 dark:text-slate-100">Quản lý ứng viên</CardTitle>
+          <CardDescription className="text-slate-600 dark:text-slate-300">
+            Chọn tin tuyển dụng để xem danh sách ứng viên.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full dark:bg-slate-800" />
+              <Skeleton className="h-10 w-full dark:bg-slate-800" />
             </div>
           ) : errorMessage ? (
-            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground dark:border-slate-700/70 dark:text-slate-300">
               {errorMessage}
             </div>
           ) : jobs.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground dark:border-slate-700/70 dark:text-slate-300">
               Chưa có tin tuyển dụng để hiển thị ứng viên.
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Vị trí</TableHead>
-                  <TableHead className="text-center">Ngày đăng</TableHead>
-                  <TableHead className="text-center">Ứng viên</TableHead>
-                  <TableHead className="text-right">Hành động</TableHead>
+                  <TableHead className="text-slate-600 dark:text-slate-300">Vị trí</TableHead>
+                  <TableHead className="text-center text-slate-600 dark:text-slate-300">Ngày đăng</TableHead>
+                  <TableHead className="text-center text-slate-600 dark:text-slate-300">Ứng viên</TableHead>
+                  <TableHead className="text-right text-slate-600 dark:text-slate-300">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {jobs.map((job) => (
                   <TableRow key={job.jobId}>
-                    <TableCell className="font-medium">{job.title}</TableCell>
-                    <TableCell className="text-center text-muted-foreground">{formatDate(job.createdAt)}</TableCell>
+                    <TableCell className="font-medium text-slate-900 dark:text-slate-100">{job.title}</TableCell>
+                    <TableCell className="text-center text-muted-foreground dark:text-slate-300">{formatDate(job.createdAt)}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-2">
                         <Users className="h-4 w-4" /> {job.applicants}

@@ -124,7 +124,7 @@ export default function RecruiterJobsPage() {
       return;
     }
 
-    const confirmed = typeof window === "undefined" ? true : window.confirm(`D?ng tin "${jobTitle}"?`);
+    const confirmed = typeof window === "undefined" ? true : window.confirm(`Đóng tin "${jobTitle}"?`);
     if (!confirmed) return;
 
     try {
@@ -135,14 +135,14 @@ export default function RecruiterJobsPage() {
       });
       setPostedJobs(jobs => jobs.map(job => job.jobId === jobId ? { ...job, status: 'CLOSED' } : job));
       toast({
-        title: "Đăng tin tuyển dụng",
-        description: `Tin "${jobTitle}" đã được đóng.`,
+        title: "Đăng tin tuyển dụng",
+        description: `Tin "${jobTitle}" đã được đóng.`,
       });
     } catch (error) {
       const apiError = error as ApiError;
       toast({
         variant: "destructive",
-        title: "Cập nhật thất bại",
+        title: "Cập nhật thất bại",
         description: apiError.message || "Không thể cập nhật trạng thái tin.",
       });
     }
@@ -150,11 +150,11 @@ export default function RecruiterJobsPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-      <Card>
+      <Card className="border-border/60 bg-background/90 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
         <CardHeader className="flex flex-row items-center">
           <div className="grid gap-2">
-            <CardTitle>Quản lý tin tuyển dụng</CardTitle>
-            <CardDescription>
+            <CardTitle className="dark:text-slate-100">Quản lý tin tuyển dụng</CardTitle>
+            <CardDescription className="dark:text-slate-300">
               Xem, sửa hoặc đóng các tin tuyển dụng của bạn.
             </CardDescription>
           </div>
@@ -173,7 +173,7 @@ export default function RecruiterJobsPage() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : errorMessage ? (
-            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground dark:border-slate-800 dark:text-slate-300">
               {errorMessage}
             </div>
           ) : postedJobs.length > 0 ? (
@@ -192,7 +192,7 @@ export default function RecruiterJobsPage() {
                   {postedJobs.map(job => (
                     <TableRow key={job.jobId}>
                       <TableCell className="font-medium">{job.title}</TableCell>
-                      <TableCell className="text-center text-muted-foreground">{formatDate(job.createdAt)}</TableCell>
+                      <TableCell className="text-center text-muted-foreground dark:text-slate-300">{formatDate(job.createdAt)}</TableCell>
                       <TableCell className="text-center">
                         <Link href={`/recruiter/dashboard/applicants/${job.jobId}`} className="text-primary hover:underline flex items-center justify-center gap-2">
                           {job.applicants} <Users className="h-4 w-4" />
@@ -210,7 +210,7 @@ export default function RecruiterJobsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
                             <DropdownMenuItem asChild>
-                              <Link href={`/recruiter/dashboard/jobs/${job.jobId}/edit`}>S?a</Link>
+                              <Link href={`/recruiter/dashboard/jobs/${job.jobId}/edit`}>Sửa</Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link href={`/recruiter/dashboard/applicants/${job.jobId}`}>Xem ứng viên</Link>
@@ -247,10 +247,10 @@ export default function RecruiterJobsPage() {
               </Pagination>
             </>
           ) : (
-            <div className="text-center py-16 border-2 border-dashed rounded-lg">
-              <FilePlus className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">Chưa có tin tuyển dụng nào</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Hãy bắt đầu tạo tin tuyển dụng đầu tiên của bạn.</p>
+            <div className="text-center py-16 border-2 border-dashed rounded-lg dark:border-slate-800">
+              <FilePlus className="mx-auto h-12 w-12 text-muted-foreground dark:text-slate-300" />
+              <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Chưa có tin tuyển dụng nào</h3>
+              <p className="mt-2 text-sm text-muted-foreground dark:text-slate-200">Hãy bắt đầu tạo tin tuyển dụng đầu tiên của bạn.</p>
               <Button asChild className="mt-6">
                 <Link href="/recruiter/dashboard/post-job">Đăng tin ngay</Link>
               </Button>

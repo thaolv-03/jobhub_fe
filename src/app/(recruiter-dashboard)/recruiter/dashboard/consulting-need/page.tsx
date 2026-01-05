@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import Image from "next/image";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,7 +11,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, ApiError } from "@/lib/api-client";
 import { updateAccount } from "@/lib/auth-storage";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { CONSULTING_BUDGET_UNITS, CONSULTING_INDUSTRIES, CONSULTING_POSITIONS } from "@/lib/constants/consulting";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,12 +30,20 @@ type ConsultationFormValues = z.infer<typeof consultationSchema>;
 
 type StepStatus = "done" | "active" | "inactive";
 
+const formatBudgetValue = (value: number | null | undefined) => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "";
+  }
+  return new Intl.NumberFormat("vi-VN").format(value);
+};
+
 const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepStatus }> }) => (
   <div className="flex items-center justify-between gap-4">
     {steps.map((step, index) => {
       const isDone = step.status === "done";
       const isActive = step.status === "active";
-      const lineClass = isDone || isActive ? "bg-emerald-500" : "bg-muted-foreground/30";
+      const lineClass =
+        isDone || isActive ? "bg-emerald-500" : "bg-muted-foreground/30 dark:bg-slate-700/60";
       return (
         <div key={step.label} className="flex flex-1 flex-col items-center text-center">
           <div className="flex w-full items-center">
@@ -45,8 +52,10 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
               className={[
                 "flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold",
                 isDone ? "border-emerald-500 bg-emerald-500 text-white" : "",
-                isActive ? "border-emerald-500 text-emerald-600" : "",
-                step.status === "inactive" ? "border-muted-foreground/30 text-muted-foreground" : "",
+                isActive ? "border-emerald-500 text-emerald-600 dark:text-emerald-300" : "",
+                step.status === "inactive"
+                  ? "border-muted-foreground/30 text-muted-foreground dark:border-slate-700 dark:text-slate-400"
+                  : "",
               ].join(" ")}
             >
               {isDone ? <Check className="h-4 w-4 text-white" /> : index + 1}
@@ -56,9 +65,9 @@ const StepIndicator = ({ steps }: { steps: Array<{ label: string; status: StepSt
           <span
             className={[
               "mt-2 text-xs font-medium",
-              isDone ? "text-emerald-600" : "",
-              isActive ? "text-emerald-700" : "",
-              step.status === "inactive" ? "text-muted-foreground" : "",
+              isDone ? "text-emerald-600 dark:text-emerald-300" : "",
+              isActive ? "text-emerald-700 dark:text-emerald-200" : "",
+              step.status === "inactive" ? "text-muted-foreground dark:text-slate-400" : "",
             ].join(" ")}
           >
             {step.label}
@@ -87,11 +96,6 @@ export default function ConsultingNeedPage() {
       notes: "",
     },
   });
-
-  const heroImage = useMemo(
-    () => PlaceHolderImages.find((image) => image.id === "job-hero"),
-    []
-  );
 
   useEffect(() => {
     if (!accessToken) {
@@ -192,15 +196,15 @@ export default function ConsultingNeedPage() {
   const displayName = account?.email?.split("@")[0] || "JobHub";
 
   return (
-    <main className="flex min-h-[calc(100vh-113px)] flex-col items-center justify-center gap-6 p-4 md:gap-10 md:p-8">
+    <main className="flex min-h-[calc(100vh-113px)] flex-col items-center justify-center gap-6 bg-slate-50 p-4 md:gap-10 md:p-8 dark:bg-slate-950">
       <div className="w-full max-w-6xl">
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden border-border/60 bg-background/90 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
           <div className="grid gap-6 lg:grid-cols-[1.05fr,0.95fr]">
             <div className="p-6 md:p-10">
               <div className="space-y-2">
-                <p className="text-lg font-semibold text-muted-foreground">Chào mừng {displayName}</p>
-                <h1 className="text-2xl font-semibold text-emerald-600">Đến với JobHub Recruitment</h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-lg font-semibold text-muted-foreground dark:text-slate-300">Chào mừng {displayName}</p>
+                <h1 className="text-2xl font-semibold text-emerald-600 dark:text-emerald-300">Đến với JobHub Recruitment</h1>
+                <p className="text-sm text-muted-foreground dark:text-slate-300">
                   Vui lòng điền các thông tin tuyển dụng bên dưới để chúng tôi hỗ trợ bạn tốt hơn.
                 </p>
               </div>
@@ -217,8 +221,8 @@ export default function ConsultingNeedPage() {
 
               <div className="mt-8">
                 <CardHeader className="px-0 pb-4">
-                  <CardTitle>Nhu cầu tư vấn</CardTitle>
-                  <CardDescription>Hãy giúp chúng tôi hiểu nhu cầu tuyển dụng của bạn.</CardDescription>
+                  <CardTitle className="dark:text-slate-100">Nhu cầu tư vấn</CardTitle>
+                  <CardDescription className="dark:text-slate-300">Hãy giúp chúng tôi hiểu nhu cầu tuyển dụng của bạn.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-0">
                   <Form {...form}>
@@ -228,14 +232,14 @@ export default function ConsultingNeedPage() {
                         name="position"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Bạn đang tuyển dụng vị trí nào? *</FormLabel>
+                            <FormLabel className="text-slate-900 dark:text-slate-200">Bạn đang tuyển dụng vị trí nào? *</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:border-slate-700/70">
                                   <SelectValue placeholder="Chọn vị trí tuyển dụng" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent>
+                              <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
                                 {CONSULTING_POSITIONS.map((position) => (
                                   <SelectItem key={position} value={position}>
                                     {position}
@@ -253,14 +257,14 @@ export default function ConsultingNeedPage() {
                         name="industry"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Lĩnh vực *</FormLabel>
+                            <FormLabel className="text-slate-900 dark:text-slate-200">Lĩnh vực *</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:border-slate-700/70">
                                   <SelectValue placeholder="Chọn lĩnh vực hoạt động" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent>
+                              <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
                                 {CONSULTING_INDUSTRIES.map((industry) => (
                                   <SelectItem key={industry} value={industry}>
                                     {industry}
@@ -278,10 +282,21 @@ export default function ConsultingNeedPage() {
                         name="budgetAmount"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Ngân sách tuyển dụng cho vị trí này của bạn là? *</FormLabel>
+                            <FormLabel className="text-slate-900 dark:text-slate-200">Ngân sách tuyển dụng cho vị trí này của bạn là? *</FormLabel>
                             <div className="grid gap-3 md:grid-cols-[1fr,200px]">
                               <FormControl>
-                                <Input type="number" min={0} {...field} />
+                                <Input
+                                  inputMode="numeric"
+                                  value={formatBudgetValue(field.value)}
+                                  onChange={(event) => {
+                                    const digitsOnly = event.target.value.replace(/[^\d]/g, "");
+                                    field.onChange(digitsOnly ? Number(digitsOnly) : 0);
+                                  }}
+                                  onBlur={field.onBlur}
+                                  name={field.name}
+                                  ref={field.ref}
+                                  className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
+                                />
                               </FormControl>
                               <FormField
                                 control={form.control}
@@ -290,11 +305,11 @@ export default function ConsultingNeedPage() {
                                   <FormItem>
                                     <Select onValueChange={unitField.onChange} value={unitField.value}>
                                       <FormControl>
-                                        <SelectTrigger>
+                                        <SelectTrigger className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:border-slate-700/70">
                                           <SelectValue placeholder="Đơn vị" />
                                         </SelectTrigger>
                                       </FormControl>
-                                      <SelectContent>
+                                      <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
                                         {CONSULTING_BUDGET_UNITS.map((unit) => (
                                           <SelectItem key={unit} value={unit}>
                                             {unit}
@@ -317,11 +332,12 @@ export default function ConsultingNeedPage() {
                         name="notes"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Ghi chú tuyển dụng (không bắt buộc)</FormLabel>
+                            <FormLabel className="text-slate-900 dark:text-slate-200">Ghi chú tuyển dụng (không bắt buộc)</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Ví dụ: Cần tuyển gấp trong 1 tháng, ưu tiên kinh nghiệm Spring Cloud/AWS."
                                 {...field}
+                                className="bg-white dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400 dark:border-slate-700/70"
                               />
                             </FormControl>
                             <FormMessage />
@@ -343,17 +359,22 @@ export default function ConsultingNeedPage() {
               </div>
             </div>
 
-            <div className="relative hidden bg-emerald-600/10 lg:block">
-              {heroImage && (
-                <Image
-                  src={heroImage.imageUrl}
-                  alt={heroImage.description}
-                  fill
-                  className="object-cover"
-                  data-ai-hint={heroImage.imageHint}
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/30 via-emerald-600/10 to-transparent" />
+            <div className="relative hidden bg-emerald-600/10 lg:block dark:bg-emerald-400/10">
+              <Image
+                src="/images/consulting-need/consulting-need_lightmode.png"
+                alt="Consulting need"
+                fill
+                className="object-cover dark:hidden"
+                priority
+              />
+              <Image
+                src="/images/consulting-need/consulting-need_darkmode.png"
+                alt="Consulting need"
+                fill
+                className="hidden object-cover dark:block"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/30 via-emerald-600/10 to-transparent dark:from-emerald-400/20 dark:via-emerald-400/5" />
             </div>
           </div>
         </Card>
