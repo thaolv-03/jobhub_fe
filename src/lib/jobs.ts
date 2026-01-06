@@ -1,4 +1,5 @@
 import { apiRequest } from "./api-client";
+import { fetchWithAuth } from "./fetchWithAuth";
 import { ApiError } from "./api-types";
 import type { ApiResponse } from "./api-types";
 
@@ -109,4 +110,23 @@ export async function getFeaturedJobs(limit: number): Promise<Job[]> {
     sortedBy: [{ field: "createAt", sort: "DESC" }],
   });
   return data.items;
+}
+
+
+export async function uploadJobJd(jobId: number, file: File): Promise<Job> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetchWithAuth<Job>(`${baseUrl}/api/jobs/${jobId}/jd`, {
+    method: "POST",
+    body: formData,
+    parseAs: "api",
+  });
+
+  if (!response.data) {
+    throw new ApiError(500, "INVALID_RESPONSE", "Upload JD response missing data.");
+  }
+
+  return response.data;
 }

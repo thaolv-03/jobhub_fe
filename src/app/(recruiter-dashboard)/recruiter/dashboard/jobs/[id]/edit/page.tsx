@@ -5,10 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, ApiError } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 import { JobForm, type JobFormValues, LOCATION_OPTIONS } from "@/components/recruiter/job-form";
+import { uploadJobJd } from "@/lib/jobs";
 import { CATEGORIES, JOB_TAGS } from "@/lib/job-form-data";
 
 type JobDetail = {
@@ -27,7 +29,7 @@ type JobDetail = {
 
 const mapNamesToIds = (names: string[] | null | undefined, items: { id: number; name: string }[]) =>
   (names ?? [])
-    .map((name) => items.find((item) => item.name === name)?.id)
+    .map((name) => items.find((item) => item.name == name)?.id)
     .filter((value): value is number => typeof value === "number");
 
 const toRequirementList = (value?: string) => {
@@ -38,12 +40,11 @@ const toRequirementList = (value?: string) => {
     .filter((line) => line.length > 0);
 };
 
-
 const normalizeLocation = (value: string) =>
   value
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
@@ -85,11 +86,14 @@ export default function EditJobPage() {
   const { toast } = useToast();
 
   const jobIdParam = Array.isArray(params.id) ? params.id[0] : params.id;
-  const jobId = jobIdParam ? Number(jobIdParam) : NaN;
+  const jobId = jobIdParam ? Number(jobIdParam) : Number.NaN;
 
   const [initialValues, setInitialValues] = React.useState<Partial<JobFormValues> | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const [jdFile, setJdFile] = React.useState<File | null>(null);
+  const [jdUploading, setJdUploading] = React.useState(false);
+  const [jdUploaded, setJdUploaded] = React.useState(false);
 
   React.useEffect(() => {
     let mounted = true;
@@ -136,6 +140,62 @@ export default function EditJobPage() {
     };
   }, [accessToken, jobId]);
 
+  const handleJdUpload = async () => {
+    if (!accessToken || !jobId || Number.isNaN(jobId)) return;
+    if (!jdFile) {
+      toast({
+        variant: "destructive",
+        title: "Chưa chọn JD",
+        description: "Vui lòng chọn file JD trước khi tải lên.",
+      });
+      return;
+    }
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/png",
+      "image/jpeg",
+    ];
+    if (!allowedTypes.includes(jdFile.type)) {
+      toast({
+        variant: "destructive",
+        title: "Định dạng không hợp lệ",
+        description: "Hỗ trợ PDF, DOC, DOCX, PNG, JPG.",
+      });
+      return;
+    }
+    if (jdFile.size > 10 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "File quá lớn",
+        description: "Dung lượng tối đa 10MB.",
+      });
+      return;
+    }
+
+    try {
+      setJdUploading(true);
+      await uploadJobJd(jobId, jdFile);
+      toast({
+        title: "Tải JD thành công",
+        description: "JD đã được tải lên cho tin tuyển dụng này.",
+      });
+      setJdFile(null);
+      setJdUploaded(true);
+    } catch (error) {
+      const apiError = error as ApiError;
+      toast({
+        variant: "destructive",
+        title: "Tải JD thất bại",
+        description: apiError.message || "Không thể tải JD lên.",
+      });
+    } finally {
+      setJdUploading(false);
+    }
+  };
+
   const handleUpdate = async (values: JobFormValues) => {
     if (!accessToken || !jobId || Number.isNaN(jobId)) return;
 
@@ -159,8 +219,8 @@ export default function EditJobPage() {
       });
 
       toast({
-        title: "Cập nhật thành công!",
-        description: `Tin tuyển dụng \"${values.title}\" đã được cập nhật.`,
+        title: "Cập nhật thành công",
+        description: `Tin tuyển dụng "${values.title}" đã được cập nhật.`,
       });
       router.push("/recruiter/dashboard/jobs");
     } catch (error) {
@@ -175,12 +235,12 @@ export default function EditJobPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-      <div className="max-w-4xl mx-auto w-full">
+      <div className="mx-auto w-full max-w-4xl">
         <Card className="border-border/60 bg-background/95 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/60">
           <CardHeader>
-            <CardTitle className="text-slate-900 dark:text-slate-100">Chỉnh sửa tin tuyển dụng</CardTitle>
+            <CardTitle className="text-slate-900 dark:text-slate-100">{"Chỉnh sửa tin tuyển dụng"}</CardTitle>
             <CardDescription className="text-slate-600 dark:text-slate-300">
-              Cập nhật thông tin cho tin tuyển dụng của bạn.
+              {"Cập nhật thông tin cho tin tuyển dụng của bạn."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -195,12 +255,43 @@ export default function EditJobPage() {
                 {errorMessage}
               </div>
             ) : (
-              <JobForm
-                initialValues={initialValues ?? undefined}
-                onSubmit={handleUpdate}
-                submitLabel="Lưu thay đổi"
-                onCancel={() => router.back()}
-              />
+              <>
+                <JobForm
+                  initialValues={initialValues ?? undefined}
+                  onSubmit={handleUpdate}
+                  submitLabel={"Lưu thay đổi"}
+                  onCancel={() => router.back()}
+                />
+                <div className="mt-6 rounded-lg border border-dashed p-4 dark:border-slate-700/70">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{"Tải JD cho tin tuyển dụng"}</p>
+                      <p className="text-xs text-muted-foreground">{"Hỗ trợ PDF, DOC, DOCX, PNG, JPG (tối đa 10MB)."}</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <input
+                        id="jd-upload"
+                        type="file"
+                        className="text-sm"
+                        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] ?? null;
+                          setJdFile(file);
+                        }}
+                      />
+                      <Button type="button" onClick={handleJdUpload} disabled={jdUploading || !jdFile}>
+                        {jdUploading ? "Đang tải..." : "Tải JD"}
+                      </Button>
+                    </div>
+                  </div>
+                  {jdFile ? (
+                    <p className="mt-2 text-xs text-muted-foreground">{`Đã chọn: ${jdFile.name}`}</p>
+                  ) : null}
+                  {jdUploaded ? (
+                    <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">Da tai JD</p>
+                  ) : null}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

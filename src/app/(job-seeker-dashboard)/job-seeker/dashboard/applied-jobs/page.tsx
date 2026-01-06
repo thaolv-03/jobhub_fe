@@ -15,7 +15,7 @@ import { ApiError } from "@/lib/api-types";
 
 const STATUS_LABELS: Record<string, string> = {
   APPLIED: "Đã nộp",
-  REVIEWING: "Đang xem",
+  REVIEWING: "Đang xem xét",
   SHORTLIST: "Phỏng vấn",
   REJECTED: "Từ chối",
   HIRED: "Đã nhận",
