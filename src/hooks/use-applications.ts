@@ -37,7 +37,8 @@ export function useApplicationCount(jobId: number | null, accessToken: string | 
         jobId!,
         {
           pagination: { page: 0, pageSize: 1 },
-          sortedBy: [],
+          sortBy: undefined,
+          sortOrder: undefined,
           searchedBy: '',
           filter: null,
         },

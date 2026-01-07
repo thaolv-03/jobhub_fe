@@ -8,7 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Upload, X, Loader2 } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { FileText, Upload, X, Loader2, Search as SearchIcon, ArrowUp, ArrowDown } from "lucide-react";
 import React from "react";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Image from "next/image";
@@ -50,6 +59,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const MAX_AVATAR_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png"];
+const DEFAULT_PAGE_SIZE = 10;
 
 const fallbackRecommendedJobs = [
   { id: 4, title: "Product Manager", company: "MoMo", location: "TP. Hồ Chí Minh", salary: "Cạnh tranh", logoId: "company-logo-momo" },
@@ -82,6 +92,11 @@ export default function JobSeekerDashboardPage() {
   const [isCvOnlineSaving, setIsCvOnlineSaving] = React.useState(false);
   const [isCvOnlineLoading, setIsCvOnlineLoading] = React.useState(false);
   const [isCvOnlineOpen, setIsCvOnlineOpen] = React.useState(false);
+  const [recommendedSearch, setRecommendedSearch] = React.useState("");
+  const [recommendedSortBy, setRecommendedSortBy] = React.useState<string | null>(null);
+  const [recommendedSortOrder, setRecommendedSortOrder] = React.useState<"ASC" | "DESC" | null>(null);
+  const [recommendedPage, setRecommendedPage] = React.useState(0);
+  const allowedRecommendedSortFields = React.useMemo(() => new Set(["title"]), []);
 
   const cvOnlineForm = useForm<CvOnlineFormValues>({
     defaultValues: buildCvOnlineDefaults(null),
@@ -183,8 +198,9 @@ export default function JobSeekerDashboardPage() {
       try {
         setIsRecommendedLoading(true);
         const data = await recommendJobs({
-          pagination: { page: 0, pageSize: 4 },
-          sortedBy: [{ field: "createAt", sort: "DESC" }],
+          pagination: { page: 0, pageSize: 10 },
+          sortBy: "createAt",
+          sortOrder: "DESC",
         });
         if (!mounted) return;
         setRecommendedJobs(data.items);
@@ -532,6 +548,63 @@ export default function JobSeekerDashboardPage() {
         logoId: job.logoId,
       }));
 
+  React.useEffect(() => {
+    setRecommendedSortBy(null);
+    setRecommendedSortOrder(null);
+    if (recommendedPage !== 0) {
+      setRecommendedPage(0);
+    }
+  }, [recommendedSearch]);
+
+  const handleRecommendedSortChange = (value: string) => {
+    if (value === "none") {
+      setRecommendedSortBy(null);
+      setRecommendedSortOrder(null);
+      if (recommendedPage !== 0) {
+        setRecommendedPage(0);
+      }
+      return;
+    }
+    if (!allowedRecommendedSortFields.has(value)) {
+      setRecommendedSortBy(null);
+      setRecommendedSortOrder(null);
+      if (recommendedPage !== 0) {
+        setRecommendedPage(0);
+      }
+      return;
+    }
+    setRecommendedSortBy(value);
+    setRecommendedSortOrder("ASC");
+    if (recommendedPage !== 0) {
+      setRecommendedPage(0);
+    }
+  };
+
+  const filteredRecommended = React.useMemo(() => {
+    const keyword = recommendedSearch.trim().toLowerCase();
+    if (!keyword) return recommendedItems;
+    return recommendedItems.filter((job) => {
+      const haystack = [job.title, job.company].join(" ").toLowerCase();
+      return haystack.includes(keyword);
+    });
+  }, [recommendedItems, recommendedSearch]);
+
+  const sortedRecommended = React.useMemo(() => {
+    if (!recommendedSortBy || !recommendedSortOrder) return filteredRecommended;
+    if (!allowedRecommendedSortFields.has(recommendedSortBy)) return filteredRecommended;
+    const direction = recommendedSortOrder === "ASC" ? 1 : -1;
+    return [...filteredRecommended].sort((a, b) => {
+      const valueA = a.title;
+      const valueB = b.title;
+      return String(valueA).localeCompare(String(valueB)) * direction;
+    });
+  }, [filteredRecommended, recommendedSortBy, recommendedSortOrder, allowedRecommendedSortFields]);
+
+  const recommendedTotalPages = Math.max(1, Math.ceil(sortedRecommended.length / DEFAULT_PAGE_SIZE));
+  const visibleRecommended = React.useMemo(() => {
+    const start = recommendedPage * DEFAULT_PAGE_SIZE;
+    return sortedRecommended.slice(start, start + DEFAULT_PAGE_SIZE);
+  }, [sortedRecommended, recommendedPage]);
 
 
 
@@ -549,7 +622,7 @@ export default function JobSeekerDashboardPage() {
                 <form onSubmit={form.handleSubmit(handleProfileSubmit)} className="space-y-6">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-20 w-20">
-                      <AvatarImage src={avatarPreviewUrl ?? avatarUrl ?? ""} alt="Avatar" className="object-cover" /> 
+                      <AvatarImage src={avatarPreviewUrl || avatarUrl || undefined} alt="Avatar" className="object-cover" /> 
                       <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-wrap items-center gap-2">
@@ -848,17 +921,52 @@ export default function JobSeekerDashboardPage() {
           
         <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
           <Card>
-            <CardHeader>
-              <CardTitle>Gợi ý cho bạn</CardTitle>
-              <CardDescription>Các công việc phù hợp với kỹ năng của bạn.</CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Gợi ý cho bạn</CardTitle>
+                <CardDescription>Các công việc phù hợp với kỹ năng của bạn.</CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full sm:w-56">
+                  <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={recommendedSearch}
+                    onChange={(event) => setRecommendedSearch(event.target.value)}
+                    placeholder="Tìm gợi ý"
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={recommendedSortBy ?? "none"} onValueChange={handleRecommendedSortChange}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Sắp xếp" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Không sắp xếp</SelectItem>
+                    <SelectItem value="title">Tên công việc</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={!recommendedSortBy}
+                  onClick={() => {
+                    setRecommendedSortOrder((order) => (order === "ASC" ? "DESC" : "ASC"));
+                    if (recommendedPage !== 0) {
+                      setRecommendedPage(0);
+                    }
+                  }}
+                >
+                  {recommendedSortOrder === "DESC" ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="grid gap-4">
               {isRecommendedLoading ? (
                 <p className="text-sm text-muted-foreground">Đang tải gợi ý...</p>
-              ) : recommendedItems.length === 0 ? (
+              ) : visibleRecommended.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Chưa có gợi ý phù hợp.</p>
               ) : (
-                recommendedItems.map((job) => {
+                visibleRecommended.map((job) => {
                   const logo = !job.logoUrl && job.logoId ? PlaceHolderImages.find((p) => p.id === job.logoId) : null;
                   return (
                     <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-start gap-4 group">
@@ -891,6 +999,61 @@ export default function JobSeekerDashboardPage() {
                   );
                 })
               )}
+              <Pagination className="mt-2">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setRecommendedPage((prev) => Math.max(0, prev - 1))}
+                      className={recommendedPage === 0 ? "pointer-events-none opacity-50" : undefined}
+                    />
+                  </PaginationItem>
+                  {(() => {
+                    const pages = new Set<number>([
+                      0,
+                      recommendedTotalPages - 1,
+                      recommendedPage - 1,
+                      recommendedPage,
+                      recommendedPage + 1,
+                    ]);
+                    const sorted = Array.from(pages)
+                      .filter((page) => page >= 0 && page < recommendedTotalPages)
+                      .sort((a, b) => a - b);
+                    const items: Array<number | "ellipsis"> = [];
+                    let prev = -1;
+                    sorted.forEach((page) => {
+                      if (prev !== -1 && page - prev > 1) {
+                        items.push("ellipsis");
+                      }
+                      items.push(page);
+                      prev = page;
+                    });
+                    return items.map((item, index) =>
+                      item === "ellipsis" ? (
+                        <PaginationItem key={`ellipsis-${index}`}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem key={item}>
+                          <PaginationLink
+                            isActive={item === recommendedPage}
+                            onClick={() => setRecommendedPage(item)}
+                          >
+                            {item + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )
+                    );
+                  })()}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() =>
+                        setRecommendedPage((prev) => Math.min(recommendedTotalPages - 1, prev + 1))
+                      }
+                      className={recommendedPage >= recommendedTotalPages - 1 ? "pointer-events-none opacity-50" : undefined}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </CardContent>
           </Card>
         </div>

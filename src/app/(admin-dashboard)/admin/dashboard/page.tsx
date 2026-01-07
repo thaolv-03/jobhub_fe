@@ -17,6 +17,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   Table,
   TableBody,
@@ -25,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import {
   ChartContainer,
   ChartTooltip,
@@ -65,6 +76,8 @@ const sumPoints = (points: { count: number }[] | undefined) =>
 
 const USE_MOCK_CHARTS = true; // set true to use mock data
 // const USE_MOCK_CHARTS = false; // set true to use mock data
+
+const DEFAULT_PAGE_SIZE = 10;
 
 const MOCK_CHARTS = {
   jobPosts: [
@@ -118,6 +131,34 @@ export default function AdminDashboardPage() {
   const [jobsTotal, setJobsTotal] = React.useState(0);
   const [cvTotal, setCvTotal] = React.useState(0);
   const [chartsLoading, setChartsLoading] = React.useState(false);
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [sortBy, setSortBy] = React.useState<string | null>(null);
+  const [sortOrder, setSortOrder] = React.useState<"ASC" | "DESC" | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const allowedSortFields = React.useMemo(
+    () => new Set(["account.email", "company.companyName", "status"]),
+    []
+  );
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+    setSortBy(null);
+    setSortOrder(null);
+  }, [searchTerm]);
+
+  const handleSort = (field: string) => {
+    if (!allowedSortFields.has(field)) return;
+    setSortBy((current) => {
+      if (current !== field) {
+        setSortOrder("ASC");
+        setCurrentPage(1);
+        return field;
+      }
+      setSortOrder((order) => (order === "ASC" ? "DESC" : "ASC"));
+      setCurrentPage(1);
+      return current;
+    });
+  };
 
   React.useEffect(() => {
     if (!accessToken) return;
@@ -224,6 +265,44 @@ export default function AdminDashboardPage() {
 
 
   const pendingCount = pendingRecruiters.length;
+  const filteredPending = React.useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return pendingRecruiters;
+    return pendingRecruiters.filter((recruiter) => {
+      const haystack = [
+        recruiter.recruiterId,
+        recruiter.companyName,
+        recruiter.email,
+        recruiter.status,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(keyword);
+    });
+  }, [pendingRecruiters, searchTerm]);
+
+  const sortedPending = React.useMemo(() => {
+    if (!sortBy || !sortOrder) return filteredPending;
+    const direction = sortOrder === "ASC" ? 1 : -1;
+    return [...filteredPending].sort((a, b) => {
+      const getValue = (item: RecruiterAdmin) => {
+        if (sortBy === "account.email") return item.email ?? "";
+        if (sortBy === "company.companyName") return item.companyName ?? "";
+        return (item as Record<string, unknown>)[sortBy] ?? "";
+      };
+      const valueA = getValue(a);
+      const valueB = getValue(b);
+      return String(valueA).localeCompare(String(valueB)) * direction;
+    });
+  }, [filteredPending, sortBy, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedPending.length / DEFAULT_PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const visiblePending = React.useMemo(() => {
+    const start = (safePage - 1) * DEFAULT_PAGE_SIZE;
+    return sortedPending.slice(start, start + DEFAULT_PAGE_SIZE);
+  }, [sortedPending, safePage]);
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -315,19 +394,27 @@ export default function AdminDashboardPage() {
 
       <section id="pending-recruiters" className="grid gap-6">
         <Card>
-          <CardHeader className="flex items-center justify-between gap-4 sm:flex-row sm:items-center">
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Yêu cầu duyệt nhà tuyển dụng</CardTitle>
               <CardDescription>Rà soát và phê duyệt yêu cầu đăng ký nhà tuyển dụng.</CardDescription>
             </div>
-            <Badge variant="secondary">{pendingCount} chờ duyệt</Badge>
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge variant="secondary">{pendingCount} chờ duyệt</Badge>
+              <Input
+                placeholder="Tìm theo công ty hoặc email"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-64"
+              />
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
                 Đang tải danh sách chờ duyệt...
               </div>
-            ) : pendingRecruiters.length === 0 ? (
+            ) : visiblePending.length === 0 ? (
               <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
                 Hiện chưa có nhà tuyển dụng chờ duyệt.
               </div>
@@ -335,15 +422,23 @@ export default function AdminDashboardPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Công ty</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Trạng thái</TableHead>
+                    <TableHead>
+                      <span>ID</span>
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader label="Công ty" field="company.companyName" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader label="Email" field="account.email" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader label="Trạng thái" field="status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+                    </TableHead>
                     <TableHead className="text-right">Hành động</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pendingRecruiters.map((recruiter) => (
+                  {visiblePending.map((recruiter) => (
                     <TableRow key={recruiter.recruiterId}>
                       <TableCell className="font-medium">#{recruiter.recruiterId}</TableCell>
                       <TableCell>{recruiter.companyName ?? "Chưa có hồ sơ"}</TableCell>
@@ -385,6 +480,50 @@ export default function AdminDashboardPage() {
                 </TableBody>
               </Table>
             )}
+            <Pagination className="mt-6">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    className={safePage <= 1 ? "pointer-events-none opacity-50" : undefined}
+                  />
+                </PaginationItem>
+                {(() => {
+                  const pages = new Set<number>([1, totalPages, safePage - 1, safePage, safePage + 1]);
+                  const sorted = Array.from(pages)
+                    .filter((pageNumber) => pageNumber >= 1 && pageNumber <= totalPages)
+                    .sort((a, b) => a - b);
+                  const items: Array<number | "ellipsis"> = [];
+                  let prev = 0;
+                  sorted.forEach((pageNumber) => {
+                    if (prev !== 0 && pageNumber - prev > 1) {
+                      items.push("ellipsis");
+                    }
+                    items.push(pageNumber);
+                    prev = pageNumber;
+                  });
+                  return items.map((item, index) =>
+                    item === "ellipsis" ? (
+                      <PaginationItem key={`ellipsis-${index}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    ) : (
+                      <PaginationItem key={item}>
+                        <PaginationLink isActive={item === safePage} onClick={() => setCurrentPage(item)}>
+                          {item}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  );
+                })()}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    className={safePage >= totalPages ? "pointer-events-none opacity-50" : undefined}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </CardContent>
         </Card>
 

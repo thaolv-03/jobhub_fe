@@ -3,11 +3,21 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Building, MapPin, DollarSign, BookmarkX, Bookmark, Search } from "lucide-react";
+import { Building, MapPin, DollarSign, BookmarkX, Bookmark, Search, ArrowUp, ArrowDown } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { listFavorites, removeFavorite } from "@/lib/favorites";
@@ -32,19 +42,64 @@ const formatSalary = (job: Job) => {
 
 type SavedJobRow = Job & { favoriteId?: number };
 
+const DEFAULT_PAGE_SIZE = 10;
+const SEARCH_PAGE_SIZE = 200;
+
 export default function SavedJobsPage() {
   const [savedJobs, setSavedJobs] = React.useState<SavedJobRow[]>([]);
+  const [totalCount, setTotalCount] = React.useState(0);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
+  const [currentPage, setCurrentPage] = React.useState(0);
+  const [sortBy, setSortBy] = React.useState<string | null>(null);
+  const [sortOrder, setSortOrder] = React.useState<"ASC" | "DESC" | null>(null);
+  const allowedSortFields = React.useMemo(() => new Set(["favoriteId"]), []);
   const { toast } = useToast();
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
+
+  React.useEffect(() => {
+    setSortBy(null);
+    setSortOrder(null);
+    if (currentPage !== 0) {
+      setCurrentPage(0);
+    }
+  }, [debouncedSearch]);
+
+  const handleSortChange = (value: string) => {
+    if (value === "none") {
+      setSortBy(null);
+      setSortOrder(null);
+      if (currentPage !== 0) {
+        setCurrentPage(0);
+      }
+      return;
+    }
+    if (!allowedSortFields.has(value)) {
+      setSortBy(null);
+      setSortOrder(null);
+      if (currentPage !== 0) {
+        setCurrentPage(0);
+      }
+      return;
+    }
+    setSortBy(value);
+    setSortOrder("ASC");
+    if (currentPage !== 0) {
+      setCurrentPage(0);
+    }
+  };
 
   React.useEffect(() => {
     let mounted = true;
     const loadFavorites = async () => {
       setIsLoading(true);
       try {
-        const favorites = await listFavorites(0, 50, debouncedSearch);
+        const isClientPaging = Boolean(debouncedSearch || sortBy);
+        const pageSize = isClientPaging ? SEARCH_PAGE_SIZE : DEFAULT_PAGE_SIZE;
+        const page = isClientPaging ? 0 : currentPage;
+        const normalizedSortBy = sortBy && allowedSortFields.has(sortBy) ? sortBy : null;
+        const normalizedSortOrder = normalizedSortBy ? sortOrder : null;
+        const favorites = await listFavorites(page, pageSize, debouncedSearch, normalizedSortBy, normalizedSortOrder);
         const jobs = await Promise.all(
           favorites.items.map(async (item) => {
             try {
@@ -56,19 +111,13 @@ export default function SavedJobsPage() {
           })
         );
         if (!mounted) return;
-        const normalizedQuery = debouncedSearch.toLowerCase();
-        const filtered = jobs.filter((job): job is SavedJobRow => Boolean(job)).filter((job) => {
-          if (!normalizedQuery) return true;
-          const haystack = [job.title, job.companyName, job.location]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
-          return haystack.includes(normalizedQuery);
-        });
-        setSavedJobs(filtered);
+        const normalized = jobs.filter((job): job is SavedJobRow => Boolean(job));
+        setSavedJobs(normalized);
+        setTotalCount(favorites.count ?? normalized.length);
       } catch (error) {
         if (!mounted) return;
         setSavedJobs([]);
+        setTotalCount(0);
       } finally {
         if (mounted) {
           setIsLoading(false);
@@ -79,7 +128,79 @@ export default function SavedJobsPage() {
     return () => {
       mounted = false;
     };
-  }, [debouncedSearch]);
+  }, [debouncedSearch, currentPage, sortBy, sortOrder]);
+
+  const filteredJobs = React.useMemo(() => {
+    if (!debouncedSearch) return savedJobs;
+    const normalizedQuery = debouncedSearch.toLowerCase();
+    return savedJobs.filter((job) => {
+      const haystack = [job.title, job.companyName, job.location]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [savedJobs, debouncedSearch]);
+
+  const sortedJobs = React.useMemo(() => {
+    if (!sortBy || !sortOrder) return filteredJobs;
+    const direction = sortOrder === "ASC" ? 1 : -1;
+    return [...filteredJobs].sort((a, b) => {
+      const valueA =
+        sortBy === "title"
+          ? a.title
+          : sortBy === "companyName"
+            ? a.companyName ?? ""
+            : sortBy === "location"
+              ? a.location ?? ""
+              : sortBy === "favoriteId"
+                ? a.favoriteId ?? 0
+                : "";
+      const valueB =
+        sortBy === "title"
+          ? b.title
+          : sortBy === "companyName"
+            ? b.companyName ?? ""
+            : sortBy === "location"
+              ? b.location ?? ""
+              : sortBy === "favoriteId"
+                ? b.favoriteId ?? 0
+                : "";
+      return String(valueA).localeCompare(String(valueB)) * direction;
+    });
+  }, [filteredJobs, sortBy, sortOrder]);
+
+  const isClientPaging = Boolean(debouncedSearch || sortBy);
+  const effectiveTotalCount = isClientPaging ? sortedJobs.length : totalCount;
+  const totalPages = Math.max(1, Math.ceil(effectiveTotalCount / DEFAULT_PAGE_SIZE));
+  const pageItems = React.useMemo(() => {
+    if (totalPages <= 1) return [0];
+    const pages = new Set<number>([0, totalPages - 1, currentPage - 1, currentPage, currentPage + 1]);
+    const sorted = Array.from(pages)
+      .filter((page) => page >= 0 && page < totalPages)
+      .sort((a, b) => a - b);
+    const result: Array<number | "ellipsis"> = [];
+    let prev = -1;
+    sorted.forEach((page) => {
+      if (prev !== -1 && page - prev > 1) {
+        result.push("ellipsis");
+      }
+      result.push(page);
+      prev = page;
+    });
+    return result;
+  }, [currentPage, totalPages]);
+
+  const goToPage = (page: number) => {
+    if (page < 0 || page >= totalPages) return;
+    setCurrentPage(page);
+  };
+
+  const visibleJobs = React.useMemo(() => {
+    if (!isClientPaging) return savedJobs;
+    const start = currentPage * DEFAULT_PAGE_SIZE;
+    return sortedJobs.slice(start, start + DEFAULT_PAGE_SIZE);
+  }, [savedJobs, sortedJobs, isClientPaging, currentPage]);
 
   const handleUnsave = async (jobId: number, jobTitle: string) => {
     try {
@@ -107,8 +228,8 @@ export default function SavedJobsPage() {
             <div>
               <CardTitle>Việc đã lưu</CardTitle>
               <CardDescription>
-                {savedJobs.length > 0
-                  ? `Bạn có ${savedJobs.length} việc đã lưu. Đừng bỏ lỡ cơ hội ứng tuyển!`
+                {effectiveTotalCount > 0
+                  ? `Bạn có ${effectiveTotalCount} việc đã lưu. Đừng bỏ lỡ cơ hội ứng tuyển!`
                   : "Bạn chưa lưu công việc nào."}
               </CardDescription>
             </div>
@@ -121,14 +242,38 @@ export default function SavedJobsPage() {
                 className="pl-9"
               />
             </div>
+            <div className="flex items-center gap-2">
+              <Select value={sortBy ?? "none"} onValueChange={handleSortChange}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Sắp xếp" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Không sắp xếp</SelectItem>
+                  <SelectItem value="favoriteId">Mới lưu</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={!sortBy}
+                onClick={() => {
+                  setSortOrder((order) => (order === "ASC" ? "DESC" : "ASC"));
+                  if (currentPage !== 0) {
+                    setCurrentPage(0);
+                  }
+                }}
+              >
+                {sortOrder === "DESC" ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-12 text-sm text-muted-foreground">Đang tải dữ liệu...</div>
-          ) : savedJobs.length > 0 ? (
+          ) : visibleJobs.length > 0 ? (
             <div className="space-y-4">
-              {savedJobs.map((job) => {
+              {visibleJobs.map((job) => {
                 const logo = PlaceHolderImages.find((p) => p.id === "company-logo-fpt");
                 return (
                   <Card key={job.jobId} className="p-4">
@@ -181,6 +326,41 @@ export default function SavedJobsPage() {
                   </Card>
                 );
               })}
+              <Pagination className="mt-6">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => goToPage(currentPage - 1)}
+                      className={currentPage === 0 ? "pointer-events-none opacity-50" : undefined}
+                    />
+                  </PaginationItem>
+                  {pageItems.map((pageItem, index) => {
+                    if (pageItem === "ellipsis") {
+                      return (
+                        <PaginationItem key={`ellipsis-${index}`}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    return (
+                      <PaginationItem key={pageItem}>
+                        <PaginationLink
+                          isActive={pageItem === currentPage}
+                          onClick={() => goToPage(pageItem)}
+                        >
+                          {pageItem + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => goToPage(currentPage + 1)}
+                      className={currentPage >= totalPages - 1 ? "pointer-events-none opacity-50" : undefined}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           ) : (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">

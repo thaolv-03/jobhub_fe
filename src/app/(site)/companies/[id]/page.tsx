@@ -74,7 +74,8 @@ export default function CompanyDetailPage() {
       try {
         const data = await searchJobs({
           pagination: { page: 0, pageSize: PAGE_SIZE },
-          sortedBy: [{ field: "createAt", sort: "DESC" }],
+          sortBy: "createAt",
+          sortOrder: "DESC",
           searchedBy: "",
           filter: { companyIds: [companyId] },
         });

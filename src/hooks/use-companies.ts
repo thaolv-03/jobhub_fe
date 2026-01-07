@@ -51,7 +51,8 @@ export function useTopCompanies(limit: number = 6, enabled = true) {
     queryFn: async () => {
       const data = await searchCompanies({
         pagination: { page: 0, pageSize: 50 },
-        sortedBy: [{ field: 'companyName', sort: 'ASC' }],
+        sortBy: "companyName",
+        sortOrder: "ASC",
         searchedBy: '',
         filter: null,
       });

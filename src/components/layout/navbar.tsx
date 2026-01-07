@@ -120,7 +120,7 @@ export function Navbar() {
                     className="overflow-hidden rounded-full"
                 >
                     <Avatar>
-                        <AvatarImage src={avatarUrl ?? ""} alt="Avatar" />
+                        <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
                         <AvatarFallback>{getAvatarFallback(account.email)}</AvatarFallback>
                     </Avatar>
                 </Button>

@@ -214,7 +214,7 @@ export default function JobSeekerDashboardLayout({
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={avatarUrl ?? ""} alt="Job seeker avatar" />
+                      <AvatarImage src={avatarUrl || undefined} alt="Job seeker avatar" />
                       <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                   </Button>

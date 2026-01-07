@@ -55,7 +55,8 @@ export function useFeaturedJobs(limit: number = 4, enabled = true) {
     queryFn: async () => {
       const data = await searchJobs({
         pagination: { page: 0, pageSize: limit },
-        sortedBy: [{ field: 'createAt', sort: 'DESC' }],
+        sortBy: "createAt",
+        sortOrder: "DESC",
       });
       return data.items;
     },

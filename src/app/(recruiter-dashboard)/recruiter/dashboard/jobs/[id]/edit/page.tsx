@@ -288,7 +288,7 @@ export default function EditJobPage() {
                     <p className="mt-2 text-xs text-muted-foreground">{`Đã chọn: ${jdFile.name}`}</p>
                   ) : null}
                   {jdUploaded ? (
-                    <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">Da tai JD</p>
+                    <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">Đã tải JD</p>
                   ) : null}
                 </div>
               </>

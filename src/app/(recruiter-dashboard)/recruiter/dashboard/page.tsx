@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
@@ -7,22 +7,38 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SortableHeader } from '@/components/ui/sortable-header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
 import { useRecruiterJobs } from '@/hooks/use-jobs';
 import { useApplications } from '@/hooks/use-applications';
 import { searchApplications } from '@/lib/recruiter-search';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import {
   Briefcase,
   CheckCircle2,
+  ArrowDown,
+  ArrowUp,
   ExternalLink,
   MoreHorizontal,
   PlusCircle,
+  Search,
   Users,
 } from 'lucide-react';
 
-const DEFAULT_PAGE_SIZE = 5;
+const DEFAULT_PAGE_SIZE = 10;
 
 type JobDTO = {
   jobId: number;
@@ -46,14 +62,77 @@ type JobRow = JobDTO & {
 export default function RecruiterDashboardPage() {
   const { roles, accessToken } = useAuth();
   const router = useRouter();
+  const [jobsSearch, setJobsSearch] = React.useState("");
+  const debouncedJobsSearch = useDebouncedValue(jobsSearch.trim(), 400);
+  const [jobsSortBy, setJobsSortBy] = React.useState<string | null>(null);
+  const [jobsSortOrder, setJobsSortOrder] = React.useState<"ASC" | "DESC" | null>(null);
+  const [jobsPage, setJobsPage] = React.useState(0);
+  const allowedJobsSortFields = React.useMemo(() => new Set(["title", "status", "createAt", "deadline"]), []);
+  const [recentSearch, setRecentSearch] = React.useState("");
+  const debouncedRecentSearch = useDebouncedValue(recentSearch.trim(), 400);
+  const [recentSortBy, setRecentSortBy] = React.useState<string | null>(null);
+  const [recentSortOrder, setRecentSortOrder] = React.useState<"ASC" | "DESC" | null>(null);
+  const [recentPage, setRecentPage] = React.useState(0);
+  const allowedRecentSortFields = React.useMemo(() => new Set(["appliedAt", "status"]), []);
+
+  React.useEffect(() => {
+    setJobsSortBy(null);
+    setJobsSortOrder(null);
+    if (jobsPage !== 0) {
+      setJobsPage(0);
+    }
+  }, [debouncedJobsSearch]);
+
+  React.useEffect(() => {
+    setRecentSortBy(null);
+    setRecentSortOrder(null);
+    if (recentPage !== 0) {
+      setRecentPage(0);
+    }
+  }, [debouncedRecentSearch]);
+
+  const handleJobsSort = (field: string) => {
+    if (!allowedJobsSortFields.has(field)) return;
+    setJobsSortBy((current) => {
+      if (current !== field) {
+        setJobsSortOrder("ASC");
+        if (jobsPage !== 0) setJobsPage(0);
+        return field;
+      }
+      setJobsSortOrder((order) => (order === "ASC" ? "DESC" : "ASC"));
+      if (jobsPage !== 0) setJobsPage(0);
+      return current;
+    });
+  };
+
+  const handleRecentSortChange = (value: string) => {
+    if (value === "none") {
+      setRecentSortBy(null);
+      setRecentSortOrder(null);
+      if (recentPage !== 0) {
+        setRecentPage(0);
+      }
+      return;
+    }
+    setRecentSortBy(value);
+    setRecentSortOrder("ASC");
+    if (recentPage !== 0) {
+      setRecentPage(0);
+    }
+  };
 
   // Memoize request object to prevent queryKey changes
-  const jobsRequest = React.useMemo(() => ({
-    pagination: { page: 0, pageSize: DEFAULT_PAGE_SIZE },
-    sortedBy: [{ field: 'createAt', sort: 'DESC' }] as const,
-    searchedBy: '',
-    filter: null,
-  }), []);
+  const jobsRequest = React.useMemo(() => {
+    const normalizedSortBy = jobsSortBy && allowedJobsSortFields.has(jobsSortBy) ? jobsSortBy : null;
+    const normalizedSortOrder = normalizedSortBy ? jobsSortOrder : null;
+    return {
+      pagination: { page: jobsPage, pageSize: DEFAULT_PAGE_SIZE },
+      sortBy: normalizedSortBy ?? undefined,
+      sortOrder: normalizedSortOrder ?? undefined,
+      searchedBy: debouncedJobsSearch,
+      filter: null,
+    };
+  }, [jobsPage, jobsSortBy, jobsSortOrder, debouncedJobsSearch, allowedJobsSortFields]);
 
   // Memoize enabled flag to ensure stability
   const isJobsEnabled = React.useMemo(() => !!accessToken, [accessToken]);
@@ -70,7 +149,7 @@ export default function RecruiterDashboardPage() {
   
   // Extract job IDs for dependency comparison (stable reference)
   const jobIds = React.useMemo(() => {
-    const ids = jobItems.map(job => job.jobId).sort();
+    const ids = jobItems.map((job) => job.jobId).sort();
     return ids.length > 0 ? ids.join(',') : '';
   }, [jobItems]);
 
@@ -96,7 +175,7 @@ export default function RecruiterDashboardPage() {
 
     let mounted = true;
     setIsLoadingCounts(true);
-    
+
     Promise.all(
       currentJobItems.map(async (job) => {
         try {
@@ -104,8 +183,9 @@ export default function RecruiterDashboardPage() {
             job.jobId,
             {
               pagination: { page: 0, pageSize: 1 },
-              sortedBy: [],
-              searchedBy: '',
+              sortBy: undefined,
+              sortOrder: undefined,
+              searchedBy: "",
               filter: null,
             },
             accessToken
@@ -139,13 +219,43 @@ export default function RecruiterDashboardPage() {
     }));
   }, [jobItems, applicationCounts]);
 
+  const jobsTotalCount = jobsResponse?.count ?? 0;
+  const jobsTotalPages = Math.max(1, Math.ceil(jobsTotalCount / DEFAULT_PAGE_SIZE));
+  const jobsPageItems = useMemo(() => {
+    if (jobsTotalPages <= 1) return [0];
+    const pages = new Set<number>([0, jobsTotalPages - 1, jobsPage - 1, jobsPage, jobsPage + 1]);
+    const sorted = Array.from(pages)
+      .filter((page) => page >= 0 && page < jobsTotalPages)
+      .sort((a, b) => a - b);
+    const result: Array<number | "ellipsis"> = [];
+    let prev = -1;
+    sorted.forEach((page) => {
+      if (prev !== -1 && page - prev > 1) {
+        result.push("ellipsis");
+      }
+      result.push(page);
+      prev = page;
+    });
+    return result;
+  }, [jobsPage, jobsTotalPages]);
+
+  const goToJobsPage = (page: number) => {
+    if (page < 0 || page >= jobsTotalPages) return;
+    setJobsPage(page);
+  };
+
   // Memoize applications request object
-  const applicationsRequest = React.useMemo(() => ({
-    pagination: { page: 0, pageSize: 5 },
-    sortedBy: [] as const,
-    searchedBy: '',
-    filter: null,
-  }), []);
+  const applicationsRequest = React.useMemo(() => {
+    const normalizedSortBy = recentSortBy && allowedRecentSortFields.has(recentSortBy) ? recentSortBy : null;
+    const normalizedSortOrder = normalizedSortBy ? recentSortOrder : null;
+    return {
+      pagination: { page: recentPage, pageSize: DEFAULT_PAGE_SIZE },
+      sortBy: normalizedSortBy ?? undefined,
+      sortOrder: normalizedSortOrder ?? undefined,
+      searchedBy: debouncedRecentSearch,
+      filter: null,
+    };
+  }, [recentPage, recentSortBy, recentSortOrder, debouncedRecentSearch, allowedRecentSortFields]);
 
   // Memoize firstJobId to prevent unnecessary re-renders
   const firstJobId = React.useMemo<number | null>(() => {
@@ -167,6 +277,30 @@ export default function RecruiterDashboardPage() {
   );
 
   const recentApplicants = applicationsResponse?.data?.items ?? [];
+  const recentTotalCount = applicationsResponse?.data?.count ?? 0;
+  const recentTotalPages = Math.max(1, Math.ceil(recentTotalCount / DEFAULT_PAGE_SIZE));
+  const recentPageItems = useMemo(() => {
+    if (recentTotalPages <= 1) return [0];
+    const pages = new Set<number>([0, recentTotalPages - 1, recentPage - 1, recentPage, recentPage + 1]);
+    const sorted = Array.from(pages)
+      .filter((page) => page >= 0 && page < recentTotalPages)
+      .sort((a, b) => a - b);
+    const result: Array<number | "ellipsis"> = [];
+    let prev = -1;
+    sorted.forEach((page) => {
+      if (prev !== -1 && page - prev > 1) {
+        result.push("ellipsis");
+      }
+      result.push(page);
+      prev = page;
+    });
+    return result;
+  }, [recentPage, recentTotalPages]);
+
+  const goToRecentPage = (page: number) => {
+    if (page < 0 || page >= recentTotalPages) return;
+    setRecentPage(page);
+  };
 
   const handlePostJobClick = () => {
     if (roles.includes('RECRUITER')) {
@@ -214,7 +348,7 @@ export default function RecruiterDashboardPage() {
   const openJobs = jobs.filter((job) => job.status === 'OPEN').length;
 
   const stats = [
-    { label: 'Tổng tin đăng', value: jobs.length, icon: Briefcase, badge: 'Tất cả' },
+    { label: 'Tổng tin đăng', value: jobsTotalCount, icon: Briefcase, badge: 'Tất cả' },
     { label: 'Tin đang mở', value: openJobs, icon: CheckCircle2, badge: 'Đang tuyển' },
     { label: 'Lượt ứng tuyển mới', value: totalApplicants, icon: Users, badge: 'Tổng' },
   ];
@@ -269,10 +403,21 @@ export default function RecruiterDashboardPage() {
                     Theo dõi, chỉnh sửa và kiểm soát hiệu quả tin tuyển dụng của bạn.
                   </CardDescription>
                 </div>
-                <Button size="sm" className="gap-2 lg:ml-auto" onClick={handlePostJobClick}>
-                  Đăng tin mới
-                  <PlusCircle className="h-4 w-4" />
-                </Button>
+                <div className="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                  <div className="relative w-full sm:w-60">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={jobsSearch}
+                      onChange={(event) => setJobsSearch(event.target.value)}
+                      placeholder="Tìm tin tuyển dụng"
+                      className="pl-9"
+                    />
+                  </div>
+                  <Button size="sm" className="gap-2" onClick={handlePostJobClick}>
+                    Đăng tin mới
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {jobs.length === 0 ? (
@@ -291,65 +436,144 @@ export default function RecruiterDashboardPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-border/60 dark:border-slate-800">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Vị trí</TableHead>
+                  <>
+                    <div className="overflow-x-auto rounded-lg border border-border/60 dark:border-slate-800">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>
+                              <SortableHeader label="Vị trí" field="title" sortBy={jobsSortBy} sortOrder={jobsSortOrder} onSort={handleJobsSort} />
+                            </TableHead>
                           <TableHead className="text-center">Ứng viên</TableHead>
-                          <TableHead className="text-center">Trạng thái</TableHead>
-                          <TableHead className="text-center">Ngày đăng</TableHead>
-                          <TableHead className="text-right">Hành động</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {jobs.map((job) => (
-                          <TableRow key={job.jobId}>
-                            <TableCell className="font-medium">{job.title}</TableCell>
-                            <TableCell className="text-center">
-                              <Link
-                                href={`/recruiter/dashboard/applicants/${job.jobId}`}
-                                className="inline-flex items-center justify-center gap-2 text-primary hover:underline"
-                              >
-                                {job.applicants} <Users className="h-4 w-4" />
-                              </Link>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant={getStatusVariant(job.status)}>{getStatusLabel(job.status)}</Badge>
-                            </TableCell>
-                            <TableCell className="text-center text-sm text-muted-foreground">
-                              {formatDate(job.createdAt)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
-                                  <DropdownMenuItem asChild>
-                                    <Link href={`/recruiter/dashboard/applicants/${job.jobId}`}>
-                                      Xem ứng viên
-                                    </Link>
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
+                            <TableHead className="text-center">
+                              <SortableHeader label="Trạng thái" field="status" sortBy={jobsSortBy} sortOrder={jobsSortOrder} onSort={handleJobsSort} align="center" />
+                            </TableHead>
+                            <TableHead className="text-center">
+                              <SortableHeader label="Ngày đăng" field="createAt" sortBy={jobsSortBy} sortOrder={jobsSortOrder} onSort={handleJobsSort} align="center" />
+                            </TableHead>
+                            <TableHead className="text-right">Hành động</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {jobs.map((job) => (
+                            <TableRow key={job.jobId}>
+                              <TableCell className="font-medium">{job.title}</TableCell>
+                              <TableCell className="text-center">
+                                <Link
+                                  href={`/recruiter/dashboard/applicants/${job.jobId}`}
+                                  className="inline-flex items-center justify-center gap-2 text-primary hover:underline"
+                                >
+                                  {job.applicants} <Users className="h-4 w-4" />
+                                </Link>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={getStatusVariant(job.status)}>{getStatusLabel(job.status)}</Badge>
+                              </TableCell>
+                              <TableCell className="text-center text-sm text-muted-foreground">
+                                {formatDate(job.createdAt)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/recruiter/dashboard/applicants/${job.jobId}`}>
+                                        Xem ứng viên
+                                      </Link>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <Pagination className="mt-4">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => goToJobsPage(jobsPage - 1)}
+                            className={jobsPage === 0 ? "pointer-events-none opacity-50" : undefined}
+                          />
+                        </PaginationItem>
+                        {jobsPageItems.map((pageItem, index) => {
+                          if (pageItem === "ellipsis") {
+                            return (
+                              <PaginationItem key={`ellipsis-${index}`}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                          return (
+                            <PaginationItem key={pageItem}>
+                              <PaginationLink
+                                isActive={pageItem === jobsPage}
+                                onClick={() => goToJobsPage(pageItem)}
+                              >
+                                {pageItem + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        })}
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => goToJobsPage(jobsPage + 1)}
+                            className={jobsPage >= jobsTotalPages - 1 ? "pointer-events-none opacity-50" : undefined}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </>
                 )}
               </CardContent>
             </Card>
 
             <Card className="shadow-sm border-border/60 dark:border-slate-800 dark:bg-slate-950/70">
-              <CardHeader>
-                <CardTitle className="dark:text-slate-100">Ứng viên gần đây</CardTitle>
-                <CardDescription className="dark:text-slate-300">Những ứng viên mới nhất từ tin đăng của bạn.</CardDescription>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle className="dark:text-slate-100">Ứng viên gần đây</CardTitle>
+                  <CardDescription className="dark:text-slate-300">Những ứng viên mới nhất từ tin đăng của bạn.</CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-full sm:w-56">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={recentSearch}
+                      onChange={(event) => setRecentSearch(event.target.value)}
+                      placeholder="Tìm ứng viên"
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select value={recentSortBy ?? "none"} onValueChange={handleRecentSortChange}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Sắp xếp" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Không sắp xếp</SelectItem>
+                      <SelectItem value="appliedAt">Ngày nộp</SelectItem>
+                      <SelectItem value="status">Trạng thái</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={!recentSortBy}
+                    onClick={() => {
+                      setRecentSortOrder((order) => (order === "ASC" ? "DESC" : "ASC"));
+                      if (recentPage !== 0) {
+                        setRecentPage(0);
+                      }
+                    }}
+                  >
+                    {recentSortOrder === "DESC" ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="grid gap-4">
                 {recentApplicants.length === 0 ? (
@@ -378,6 +602,41 @@ export default function RecruiterDashboardPage() {
                     </div>
                   ))
                 )}
+                <Pagination className="pt-2">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => goToRecentPage(recentPage - 1)}
+                        className={recentPage === 0 ? "pointer-events-none opacity-50" : undefined}
+                      />
+                    </PaginationItem>
+                    {recentPageItems.map((pageItem, index) => {
+                      if (pageItem === "ellipsis") {
+                        return (
+                          <PaginationItem key={`ellipsis-${index}`}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
+                      return (
+                        <PaginationItem key={pageItem}>
+                          <PaginationLink
+                            isActive={pageItem === recentPage}
+                            onClick={() => goToRecentPage(pageItem)}
+                          >
+                            {pageItem + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => goToRecentPage(recentPage + 1)}
+                        className={recentPage >= recentTotalPages - 1 ? "pointer-events-none opacity-50" : undefined}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               </CardContent>
               <CardFooter>
                 <Button asChild size="sm" className="w-full">

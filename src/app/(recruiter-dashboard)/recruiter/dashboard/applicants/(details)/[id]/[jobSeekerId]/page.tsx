@@ -69,6 +69,8 @@ export default function ApplicantProfilePage() {
   const skills = (profile?.skills ?? []).filter((skill) => skill?.skillName);
   const initial = displayName?.trim()?.charAt(0)?.toUpperCase() || "U";
   const parsedCvJson = applicationDetail?.parsedCvJson ?? null;
+  const jobTitle = applicationDetail?.jobTitle?.trim();
+  const displayJobTitle = jobTitle ? `vị trí ${jobTitle}` : `tin tuyển dụng #${jobId}`;
 
   const parsedCvData = React.useMemo(() => {
     if (!parsedCvJson) return null;
@@ -97,23 +99,23 @@ export default function ApplicantProfilePage() {
   };
 
   const cvFields = [
-    { key: "NAME", label: "Name" },
+    { key: "NAME", label: "Họ và tên" },
     { key: "EMAIL ADDRESS", label: "Email" },
-    { key: "CONTACT", label: "Phone" },
-    { key: "LOCATION", label: "Location" },
-    { key: "DESIGNATION", label: "Designation" },
-    { key: "YEARS OF EXPERIENCE", label: "Years of experience" },
-    { key: "SKILLS", label: "Skills" },
-    { key: "COMPANIES WORKED AT", label: "Companies" },
-    { key: "WORKED AS", label: "Worked as" },
-    { key: "COLLEGE NAME", label: "College" },
-    { key: "UNIVERSITY", label: "University" },
-    { key: "DEGREE", label: "Degree" },
-    { key: "YEAR OF GRADUATION", label: "Graduation year" },
-    { key: "CERTIFICATION", label: "Certification" },
-    { key: "AWARDS", label: "Awards" },
-    { key: "LANGUAGE", label: "Language" },
-    { key: "LINKEDIN LINK", label: "LinkedIn" },
+    { key: "CONTACT", label: "Số điện thoại" },
+    { key: "LOCATION", label: "Địa điểm" },
+    { key: "DESIGNATION", label: "Chức danh" },
+    { key: "YEARS OF EXPERIENCE", label: "Số năm kinh nghiệm" },
+    { key: "SKILLS", label: "Kỹ năng" },
+    { key: "COMPANIES WORKED AT", label: "Công ty đã làm" },
+    { key: "WORKED AS", label: "Vị trí đã làm" },
+    { key: "COLLEGE NAME", label: "Trường cao đẳng" },
+    { key: "UNIVERSITY", label: "Đại học" },
+    { key: "DEGREE", label: "Bằng cấp" },
+    { key: "YEAR OF GRADUATION", label: "Năm tốt nghiệp" },
+    { key: "CERTIFICATION", label: "Chứng chỉ" },
+    { key: "AWARDS", label: "Giải thưởng" },
+    { key: "LANGUAGE", label: "Ngôn ngữ" },
+    { key: "LINKEDIN LINK", label: "Liên kết LinkedIn" },
   ];
 
   return (
@@ -123,7 +125,7 @@ export default function ApplicantProfilePage() {
           <div className="grid gap-2">
             <CardTitle className="text-slate-900 dark:text-slate-100">Hồ sơ ứng viên</CardTitle>
             <CardDescription className="text-slate-600 dark:text-slate-300">
-              Ứng viên #{jobSeekerId} trong tin tuyển dụng #{jobId}.
+              Ứng viên cho tin tuyển dụng {displayJobTitle}.
             </CardDescription>
           </div>
           <Button asChild variant="outline" className="ml-auto dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100">
@@ -205,12 +207,12 @@ export default function ApplicantProfilePage() {
                   <p className="text-sm text-muted-foreground dark:text-slate-300">Giới thiệu</p>
                   <p className="whitespace-pre-line text-slate-900 dark:text-slate-100">{profile.bio || "-"}</p>
                 </div>
-                <div className="rounded-lg border p-4 md:col-span-2 dark:border-slate-800/70 dark:bg-slate-950/40">
+                <div className="rounded-lg border bg-emerald-50/70 p-4 md:col-span-2 dark:border-slate-800/70 dark:bg-emerald-950/20">
                   <div className="flex flex-col gap-1">
                     <p className="text-sm text-muted-foreground dark:text-slate-300">CV Online</p>
                     {applicationDetail?.matchingScore != null ? (
                       <p className="text-xs text-muted-foreground dark:text-slate-400">
-                        Matching score: {applicationDetail.matchingScore}
+                        Điểm phù hợp: {applicationDetail.matchingScore}
                       </p>
                     ) : null}
                   </div>

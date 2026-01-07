@@ -36,6 +36,8 @@ type Pagination = {
 export type CompanySearchRequest = {
   pagination: Pagination;
   sortedBy?: SortItem[];
+  sortBy?: string;
+  sortOrder?: SortDirection;
   searchedBy?: string;
   filter?: Company | null;
 };
@@ -51,9 +53,18 @@ export async function getCompany(companyId: number): Promise<Company> {
 }
 
 export async function searchCompanies(request: CompanySearchRequest): Promise<PageList<Company>> {
+  const sortedBy =
+    request.sortBy && request.sortOrder
+      ? [{ field: request.sortBy, sort: request.sortOrder }]
+      : request.sortedBy;
   const response = await apiRequest<PageList<Company>>("/api/companies/search", {
     method: "POST",
-    body: request,
+    body: {
+      ...request,
+      sortedBy,
+      sortBy: undefined,
+      sortOrder: undefined,
+    },
   });
   if (!response.data) {
     throw new ApiError(500, "INVALID_RESPONSE", "Company search response missing data.");

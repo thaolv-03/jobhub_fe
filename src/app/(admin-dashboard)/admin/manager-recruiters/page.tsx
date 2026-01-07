@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AdminTableFooter } from "@/components/admin/admin-table-footer";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { fetchRecruiterDocuments, RecruiterDocument, updateRecruiterStatus } from "@/lib/admin-recruiter";
 import {
   AccountStatus,
@@ -21,7 +22,8 @@ import {
 } from "@/lib/admin-users";
 import { getAccessToken } from "@/lib/auth-storage";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 10;
+const SEARCH_PAGE_SIZE = 200;
 
 const getAccountStatusLabel = (status: AccountStatus) => {
   switch (status) {
@@ -85,12 +87,21 @@ export default function ManageRecruitersPage() {
   const [accountStatusFilter, setAccountStatusFilter] = React.useState<"all" | AccountStatus>("all");
   const [statusFilter, setStatusFilter] = React.useState<"all" | RecruiterStatus>("all");
   const [page, setPage] = React.useState(1);
+  const [sortBy, setSortBy] = React.useState<string | null>(null);
+  const [sortOrder, setSortOrder] = React.useState<"ASC" | "DESC" | null>(null);
+  const allowedSortFields = React.useMemo(
+    () => new Set(["account.email", "company.companyName", "status"]),
+    []
+  );
   const [updatingAccountId, setUpdatingAccountId] = React.useState<number | null>(null);
   const [updatingRecruiterId, setUpdatingRecruiterId] = React.useState<number | null>(null);
   const [isDocsOpen, setIsDocsOpen] = React.useState(false);
   const [docsLoading, setDocsLoading] = React.useState(false);
   const [selectedRecruiter, setSelectedRecruiter] = React.useState<RecruiterAdminDetail | null>(null);
   const [documents, setDocuments] = React.useState<RecruiterDocument[]>([]);
+
+  const isClientPaging =
+    Boolean(debouncedSearch) || statusFilter !== "all" || accountStatusFilter !== "all" || Boolean(sortBy);
 
   const loadRecruiters = React.useCallback(async () => {
     const accessToken = getAccessToken();
@@ -100,13 +111,17 @@ export default function ManageRecruitersPage() {
     }
     setIsLoading(true);
     try {
+      const normalizedSortBy = sortBy && allowedSortFields.has(sortBy) ? sortBy : null;
+      const normalizedSortOrder = normalizedSortBy ? sortOrder : null;
       const data = await searchRecruiters({
-        page: Math.max(0, page - 1),
-        pageSize: PAGE_SIZE,
+        page: isClientPaging ? 0 : Math.max(0, page - 1),
+        pageSize: isClientPaging ? SEARCH_PAGE_SIZE : PAGE_SIZE,
         searchedBy: debouncedSearch,
+        sortBy: normalizedSortBy,
+        sortOrder: normalizedSortOrder,
       });
       setRecruiters(data.items);
-      setTotalCount(data.count);
+      setTotalCount(data.count ?? data.items.length);
     } catch (error) {
       toast({
         title: "Không thể tải nhà tuyển dụng",
@@ -116,19 +131,75 @@ export default function ManageRecruitersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, page, toast]);
+  }, [debouncedSearch, page, sortBy, sortOrder, toast, isClientPaging]);
 
   React.useEffect(() => {
     void loadRecruiters();
   }, [loadRecruiters]);
 
-  const visibleRecruiters = React.useMemo(() => {
+  React.useEffect(() => {
+    setPage(1);
+    setSortBy(null);
+    setSortOrder(null);
+  }, [debouncedSearch, statusFilter, accountStatusFilter]);
+
+  const handleSort = (field: string) => {
+    if (!allowedSortFields.has(field)) return;
+    setSortBy((current) => {
+      if (current !== field) {
+        setSortOrder("ASC");
+        setPage(1);
+        return field;
+      }
+      setSortOrder((order) => (order === "ASC" ? "DESC" : "ASC"));
+      setPage(1);
+      return current;
+    });
+  };
+
+  const filteredRecruiters = React.useMemo(() => {
+    const keyword = debouncedSearch.toLowerCase();
     return recruiters.filter((recruiter) => {
       const matchesStatus = statusFilter === "all" || recruiter.status === statusFilter;
       const matchesAccount = accountStatusFilter === "all" || recruiter.accountStatus === accountStatusFilter;
-      return matchesStatus && matchesAccount;
+      if (!matchesStatus || !matchesAccount) return false;
+      if (!keyword) return true;
+      const haystack = [
+        recruiter.email,
+        recruiter.companyName,
+        recruiter.phone,
+        recruiter.position,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(keyword);
     });
-  }, [recruiters, statusFilter, accountStatusFilter]);
+  }, [recruiters, statusFilter, accountStatusFilter, debouncedSearch]);
+
+  const sortedRecruiters = React.useMemo(() => {
+    if (!sortBy || !sortOrder) return filteredRecruiters;
+    const direction = sortOrder === "ASC" ? 1 : -1;
+    return [...filteredRecruiters].sort((a, b) => {
+      const getValue = (item: RecruiterAdminDetail) => {
+        if (sortBy === "account.email") return item.email ?? "";
+        if (sortBy === "company.companyName") return item.companyName ?? "";
+        return (item as Record<string, unknown>)[sortBy] ?? "";
+      };
+      const valueA = getValue(a);
+      const valueB = getValue(b);
+      return String(valueA).localeCompare(String(valueB)) * direction;
+    });
+  }, [filteredRecruiters, sortBy, sortOrder]);
+
+  const effectiveTotalCount = isClientPaging ? sortedRecruiters.length : totalCount;
+  const totalPages = Math.max(1, Math.ceil(effectiveTotalCount / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const visibleRecruiters = React.useMemo(() => {
+    if (!isClientPaging) return sortedRecruiters;
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return sortedRecruiters.slice(start, start + PAGE_SIZE);
+  }, [sortedRecruiters, currentPage, isClientPaging]);
 
   const handleToggleAccountStatus = async (recruiterId: number, status: AccountStatus) => {
     if (!getAccessToken()) return;
@@ -203,7 +274,6 @@ export default function ManageRecruitersPage() {
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
-                setPage(1);
               }}
               className="w-64"
             />
@@ -211,7 +281,6 @@ export default function ManageRecruitersPage() {
               value={statusFilter}
               onValueChange={(value) => {
                 setStatusFilter(value as "all" | RecruiterStatus);
-                setPage(1);
               }}
             >
               <SelectTrigger className="w-44">
@@ -229,7 +298,6 @@ export default function ManageRecruitersPage() {
               value={accountStatusFilter}
               onValueChange={(value) => {
                 setAccountStatusFilter(value as "all" | AccountStatus);
-                setPage(1);
               }}
             >
               <SelectTrigger className="w-40">
@@ -249,14 +317,28 @@ export default function ManageRecruitersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Công ty</TableHead>
-                <TableHead>Số điện thoại</TableHead>
-                <TableHead>Chức vụ</TableHead>
-                <TableHead>Trạng thái duyệt</TableHead>
+                <TableHead>
+                <span>ID</span>
+                </TableHead>
+                <TableHead>
+                <SortableHeader label="Email" field="account.email" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+                </TableHead>
+                <TableHead>
+                <SortableHeader label="Công ty" field="company.companyName" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+                </TableHead>
+                <TableHead>
+                <span>Số điện thoại</span>
+                </TableHead>
+                <TableHead>
+                <span>Chức vụ</span>
+                </TableHead>
+                <TableHead>
+                  <SortableHeader label="Trạng thái duyệt" field="status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+                </TableHead>
                 <TableHead>Tài liệu</TableHead>
-                <TableHead>Trạng thái tài khoản</TableHead>
+                <TableHead>
+                <span>Trạng thái tài khoản</span>
+                </TableHead>
                 <TableHead className="text-right">Hành động</TableHead>
               </TableRow>
             </TableHeader>
@@ -342,12 +424,11 @@ export default function ManageRecruitersPage() {
             </TableBody>
           </Table>
           <AdminTableFooter
-            totalCount={totalCount}
+            totalCount={effectiveTotalCount}
             totalLabel="nhà tuyển dụng"
-            page={page}
+            page={currentPage}
             pageSize={PAGE_SIZE}
-            onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
-            onNext={() => setPage((prev) => prev + 1)}
+            onPageChange={(nextPage) => setPage(Math.min(Math.max(1, nextPage), totalPages))}
           />
         </CardContent>
       </Card>

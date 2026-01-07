@@ -55,6 +55,8 @@ export type SortItem = {
 export type JobSearchRequest = {
   pagination: Pagination;
   sortedBy?: SortItem[];
+  sortBy?: string;
+  sortOrder?: SortDirection;
   searchedBy?: string;
   filter?: JobFilter;
 };
@@ -73,9 +75,18 @@ export const formatJobType = (jobType?: JobType | null) => {
 };
 
 export async function searchJobs(request: JobSearchRequest): Promise<PageList<Job>> {
+  const sortedBy =
+    request.sortBy && request.sortOrder
+      ? [{ field: request.sortBy, sort: request.sortOrder }]
+      : request.sortedBy;
   const response = await apiRequest<PageList<Job>>("/api/jobs/search", {
     method: "POST",
-    body: request,
+    body: {
+      ...request,
+      sortedBy,
+      sortBy: undefined,
+      sortOrder: undefined,
+    },
   });
   if (!response.data) {
     throw new ApiError(500, "INVALID_RESPONSE", "Job search response missing data.");
@@ -84,9 +95,18 @@ export async function searchJobs(request: JobSearchRequest): Promise<PageList<Jo
 }
 
 export async function recommendJobs(request: JobSearchRequest): Promise<PageList<Job>> {
+  const sortedBy =
+    request.sortBy && request.sortOrder
+      ? [{ field: request.sortBy, sort: request.sortOrder }]
+      : request.sortedBy;
   const response = await apiRequest<PageList<Job>>("/api/jobs/recommended", {
     method: "POST",
-    body: request,
+    body: {
+      ...request,
+      sortedBy,
+      sortBy: undefined,
+      sortOrder: undefined,
+    },
   });
   if (!response.data) {
     throw new ApiError(500, "INVALID_RESPONSE", "Job recommendation response missing data.");
@@ -107,7 +127,8 @@ export async function getJob(jobId: number): Promise<Job> {
 export async function getFeaturedJobs(limit: number): Promise<Job[]> {
   const data = await searchJobs({
     pagination: { page: 0, pageSize: limit },
-    sortedBy: [{ field: "createAt", sort: "DESC" }],
+    sortBy: "createAt",
+    sortOrder: "DESC",
   });
   return data.items;
 }

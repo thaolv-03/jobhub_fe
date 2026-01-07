@@ -198,7 +198,7 @@ export default function RecruiterProfilePage() {
             <div className="flex flex-1 items-center justify-center">
               <Avatar className="h-36 w-36">
                 <AvatarImage
-                  src={avatarPreviewUrl ?? avatarUrl ?? ""}
+                  src={avatarPreviewUrl || avatarUrl || undefined}
                   alt="Recruiter avatar"
                   className="object-cover"
                 />
@@ -235,7 +235,7 @@ export default function RecruiterProfilePage() {
           <CardContent>
             <div className="mb-6 flex items-center gap-4 rounded-lg border border-border/60 p-4 dark:border-slate-800">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={company?.avatarUrl ?? ""} alt="Company avatar" className="object-cover" />
+                <AvatarImage src={company?.avatarUrl || undefined} alt="Company avatar" className="object-cover" />
                 <AvatarFallback>CO</AvatarFallback>
               </Avatar>
               <div className="min-w-0">

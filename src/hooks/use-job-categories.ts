@@ -17,7 +17,8 @@ export function useJobCategories(enabled = true) {
       // Only fetch a small sample to extract categories
       const data = await searchJobs({
         pagination: { page: 0, pageSize: 50 },
-        sortedBy: [{ field: 'createAt', sort: 'DESC' }],
+        sortBy: "createAt",
+        sortOrder: "DESC",
       });
       const categorySet = new Set<string>();
       data.items.forEach((job) => {

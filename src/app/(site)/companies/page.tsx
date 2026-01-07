@@ -33,7 +33,8 @@ export default function CompaniesPage() {
       try {
         const data = await searchCompanies({
           pagination: { page, pageSize: PAGE_SIZE },
-          sortedBy: [{ field: "companyName", sort: "ASC" }],
+          sortBy: "companyName",
+          sortOrder: "ASC",
           searchedBy: debouncedSearch || "",
           filter: null,
         });

@@ -22,6 +22,8 @@ type SortItem = {
 type BaseSearchRequest<T> = {
   pagination: Pagination;
   sortedBy?: SortItem[];
+  sortBy?: string;
+  sortOrder?: "ASC" | "DESC";
   searchedBy?: string;
   filter?: T;
 };
@@ -29,13 +31,21 @@ type BaseSearchRequest<T> = {
 export async function listFavorites(
   page = 0,
   pageSize = 50,
-  searchedBy = ""
+  searchedBy = "",
+  sortBy?: string | null,
+  sortOrder?: "ASC" | "DESC" | null
 ): Promise<PageList<Favorite>> {
+  const sortedBy =
+    sortBy && sortOrder
+      ? [{ field: sortBy, sort: sortOrder }]
+      : [{ field: "favoriteId", sort: "DESC" }];
   const response = await apiRequest<PageList<Favorite>>("/api/favorites/search", {
     method: "POST",
     body: {
       pagination: { page, pageSize },
-      sortedBy: [{ field: "favoriteId", sort: "DESC" }],
+      sortedBy,
+      sortBy: undefined,
+      sortOrder: undefined,
       searchedBy: searchedBy.trim() || undefined,
     } as BaseSearchRequest<Favorite>,
     suppressAuthFailure: true,

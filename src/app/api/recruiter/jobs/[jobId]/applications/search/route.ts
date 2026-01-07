@@ -66,7 +66,32 @@ export async function POST(
     return buildErrorResponse("Missing API base URL.", 500);
   }
 
-  const body = await request.json();
+  let body: unknown = {};
+  try {
+    const raw = await request.text();
+    body = raw ? JSON.parse(raw) : {};
+  } catch {
+    body = {};
+  }
+  if (body && typeof body === "object") {
+    const payload = body as Record<string, unknown>;
+    const sortBy = typeof payload.sortBy === "string" ? payload.sortBy : null;
+    const sortOrder = payload.sortOrder === "ASC" || payload.sortOrder === "DESC" ? payload.sortOrder : null;
+    if (sortBy && sortOrder) {
+      payload.sortedBy = [{ field: sortBy, sort: sortOrder }];
+    }
+    delete payload.sortBy;
+    delete payload.sortOrder;
+    if (Array.isArray(payload.sortedBy)) {
+      const allowedFields = new Set(["appliedAt", "status", "matchingScore"]);
+      payload.sortedBy = payload.sortedBy.filter((item) => {
+        if (!item || typeof item !== "object") return false;
+        const field = (item as { field?: unknown }).field;
+        return typeof field === "string" && allowedFields.has(field);
+      });
+    }
+    body = payload;
+  }
   const { jobId } = await context.params;
   const targetUrl = new URL(`/api/jobs/${jobId}/applications`, baseUrl);
 

@@ -89,7 +89,7 @@ export default function Home() {
 
   // Memoize category options with "all" option
   const categoryOptionsWithAll = useMemo(() => {
-    return [{ value: "all", label: "Category" }, ...CATEGORIES.map((item) => ({ value: item.name, label: item.name }))];
+    return [{ value: "all", label: "Danh mục" }, ...CATEGORIES.map((item) => ({ value: item.name, label: item.name }))];
   }, []);
 
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
@@ -299,7 +299,7 @@ export default function Home() {
                   >
                     {company.avatarUrl || logo?.imageUrl ? (
                       <Image
-                        src={company.avatarUrl || logo?.imageUrl || ""}
+                        src={company.avatarUrl || logo?.imageUrl || undefined}
                         alt={company.companyName}
                         width={96}
                         height={48}

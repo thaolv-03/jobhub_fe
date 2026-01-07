@@ -145,17 +145,13 @@ export default function JobsPage() {
     const locationFilters = selectedLocations.map((loc) => loc.trim().toLowerCase()).filter(Boolean);
     const range = SALARY_RANGES.find((item) => item.value === salaryRange);
 
-    return {
-      pagination: { page, pageSize: PAGE_SIZE },
-      sortedBy:
-        sort === "newest"
-          ? [{ field: "createAt", sort: "DESC" }]
-          : sort === "deadline"
-            ? [{ field: "deadline", sort: "ASC" }]
-            : [{ field: "title", sort: "ASC" }],
-      searchedBy: searchText || undefined,
-      filter: {
-        locations: locationFilters.length > 0 ? locationFilters : undefined,
+      return {
+        pagination: { page, pageSize: PAGE_SIZE },
+        sortBy: sort === "newest" ? "createAt" : sort === "deadline" ? "deadline" : "title",
+        sortOrder: sort === "newest" ? "DESC" : "ASC",
+        searchedBy: searchText || undefined,
+        filter: {
+          locations: locationFilters.length > 0 ? locationFilters : undefined,
         jobTypes: selectedJobTypes.length > 0 ? selectedJobTypes : undefined,
         salaryMin: range?.min ?? null,
         salaryMax: range?.max ?? null,

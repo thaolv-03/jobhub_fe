@@ -58,10 +58,9 @@ type NavItem = {
 const recruiterNavItems: NavItem[] = [
   { href: "/recruiter/dashboard", label: "Dashboard", icon: LayoutDashboard, match: "exact" },
   { href: "/recruiter/dashboard/profile", label: "Hồ sơ", icon: UserCircle2, match: "startsWith" },
-  { href: "/recruiter/dashboard/jobs", label: "Quản lý tin đăng", icon: Briefcase, match: "startsWith" },
   { href: "/recruiter/dashboard/post-job", label: "Đăng tin mới", icon: PlusCircle, match: "startsWith", action: "post-job" },
+  { href: "/recruiter/dashboard/jobs", label: "Quản lý tin đăng", icon: Briefcase, match: "startsWith" },
   { href: "/recruiter/dashboard/applicants", label: "Quản lý ứng viên", icon: Users, match: "startsWith" },
-  { href: "/recruiter/dashboard/ai-cv", label: "CV đề xuất bằng AI", icon: Sparkles, match: "startsWith" },
 ];
 
 const pageMetaMap = [
@@ -92,8 +91,6 @@ const pageMetaMap = [
     subtitle: "Xem danh sách và trạng thái hồ sơ ứng viên.",
   },
   {
-    match: "/recruiter/dashboard/ai-cv",
-    title: "CV đề xuất bằng AI",
     subtitle: "Tổng hợp gợi ý CV thông minh cho tin tuyển dụng.",
   },
   {

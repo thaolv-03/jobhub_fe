@@ -37,6 +37,8 @@ type SortItem = {
 type BaseSearchRequest<T> = {
   pagination: Pagination;
   sortedBy?: SortItem[];
+  sortBy?: string;
+  sortOrder?: "ASC" | "DESC";
   searchedBy?: string;
   filter?: T;
 };
@@ -67,12 +69,23 @@ export async function withdrawApplication(applicationId: string): Promise<Applic
   return response.data;
 }
 
-export async function listApplications(page = 0, pageSize = 20): Promise<PageList<Application>> {
+export async function listApplications(
+  page = 0,
+  pageSize = 20,
+  options?: { searchedBy?: string; sortBy?: string | null; sortOrder?: "ASC" | "DESC" | null }
+): Promise<PageList<Application>> {
+  const sortedBy =
+    options?.sortBy && options.sortOrder
+      ? [{ field: options.sortBy, sort: options.sortOrder }]
+      : [{ field: "appliedAt", sort: "DESC" }];
   const response = await apiRequest<PageList<Application>>("/api/applications/search", {
     method: "POST",
     body: {
       pagination: { page, pageSize },
-      sortedBy: [{ field: "appliedAt", sort: "DESC" }],
+      sortedBy,
+      sortBy: undefined,
+      sortOrder: undefined,
+      searchedBy: options?.searchedBy ?? undefined,
     } as BaseSearchRequest<Application>,
     suppressAuthFailure: true,
   });

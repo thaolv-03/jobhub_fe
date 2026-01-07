@@ -9,6 +9,7 @@ export type PageListDTO<T> = {
 };
 
 type SortDirection = "asc" | "desc";
+type SortOrder = "ASC" | "DESC";
 
 type SortDTO = {
   field: string;
@@ -58,10 +59,16 @@ export async function searchJobSeekers(params: {
   pageSize: number;
   searchedBy?: string;
   sortedBy?: SortDTO[];
+  sortBy?: string | null;
+  sortOrder?: SortOrder | null;
 }) {
+  const normalizedSort =
+    params.sortBy && params.sortOrder
+      ? [{ field: params.sortBy, sort: params.sortOrder.toLowerCase() as SortDirection }]
+      : params.sortedBy;
   const body: BaseSearchDTO<null> = {
     pagination: { page: params.page, pageSize: params.pageSize },
-    sortedBy: params.sortedBy ?? [{ field: "createAt", sort: "desc" }],
+    sortedBy: normalizedSort ?? [{ field: "createAt", sort: "desc" }],
     searchedBy: params.searchedBy ?? "",
     filter: null,
   };
@@ -79,10 +86,16 @@ export async function searchRecruiters(params: {
   pageSize: number;
   searchedBy?: string;
   sortedBy?: SortDTO[];
+  sortBy?: string | null;
+  sortOrder?: SortOrder | null;
 }) {
+  const normalizedSort =
+    params.sortBy && params.sortOrder
+      ? [{ field: params.sortBy, sort: params.sortOrder.toLowerCase() as SortDirection }]
+      : params.sortedBy;
   const body: BaseSearchDTO<null> = {
     pagination: { page: params.page, pageSize: params.pageSize },
-    sortedBy: params.sortedBy ?? [{ field: "account.email", sort: "asc" }],
+    sortedBy: normalizedSort ?? [{ field: "account.email", sort: "asc" }],
     searchedBy: params.searchedBy ?? "",
     filter: null,
   };
