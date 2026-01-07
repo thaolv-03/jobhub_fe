@@ -68,10 +68,14 @@ export default function Home() {
 
   // Get unique company IDs from featured jobs
   const companyIds = useMemo(() => {
-    const ids = featuredJobs
-      .filter((job) => job.companyId && !job.companyName)
-      .map((job) => job.companyId)
-      .filter((id, index, self) => self.indexOf(id) === index);
+    const seen = new Set<number>();
+    const ids: number[] = [];
+    featuredJobs.forEach((job) => {
+      if (job.companyId && !job.companyName && !seen.has(job.companyId)) {
+        seen.add(job.companyId);
+        ids.push(job.companyId);
+      }
+    });
     return ids;
   }, [featuredJobs]);
 

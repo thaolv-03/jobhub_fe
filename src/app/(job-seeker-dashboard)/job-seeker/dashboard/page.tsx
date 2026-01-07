@@ -252,8 +252,10 @@ export default function JobSeekerDashboardPage() {
       let nextSkills = skills;
       const initialNames = initialSkills.map((skill) => normalizeSkill(skill.skillName));
 
-      const toAdd = skills.filter((skill) => !initialNames.includes(normalizeSkill(skill.skillName)));
-      const toRemove = initialSkills.filter((skill) => !currentNames.includes(normalizeSkill(skill.skillName)));
+      const initialNameSet = new Set(initialNames);
+      const currentNameSet = new Set(currentNames);
+      const toAdd = skills.filter((skill) => !initialNameSet.has(normalizeSkill(skill.skillName)));
+      const toRemove = initialSkills.filter((skill) => !currentNameSet.has(normalizeSkill(skill.skillName)));
 
       if (toAdd.length > 0) {
         const created = await Promise.all(

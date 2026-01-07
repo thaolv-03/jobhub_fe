@@ -41,6 +41,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { buildPaginationItems } from "@/components/admin/pagination-utils";
 import {
   Activity,
   FileText,
@@ -303,6 +304,9 @@ export default function AdminDashboardPage() {
     const start = (safePage - 1) * DEFAULT_PAGE_SIZE;
     return sortedPending.slice(start, start + DEFAULT_PAGE_SIZE);
   }, [sortedPending, safePage]);
+  const pageItems = React.useMemo(() => {
+    return buildPaginationItems(safePage, totalPages);
+  }, [safePage, totalPages]);
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -488,34 +492,19 @@ export default function AdminDashboardPage() {
                     className={safePage <= 1 ? "pointer-events-none opacity-50" : undefined}
                   />
                 </PaginationItem>
-                {(() => {
-                  const pages = new Set<number>([1, totalPages, safePage - 1, safePage, safePage + 1]);
-                  const sorted = Array.from(pages)
-                    .filter((pageNumber) => pageNumber >= 1 && pageNumber <= totalPages)
-                    .sort((a, b) => a - b);
-                  const items: Array<number | "ellipsis"> = [];
-                  let prev = 0;
-                  sorted.forEach((pageNumber) => {
-                    if (prev !== 0 && pageNumber - prev > 1) {
-                      items.push("ellipsis");
-                    }
-                    items.push(pageNumber);
-                    prev = pageNumber;
-                  });
-                  return items.map((item, index) =>
-                    item === "ellipsis" ? (
-                      <PaginationItem key={`ellipsis-${index}`}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : (
-                      <PaginationItem key={item}>
-                        <PaginationLink isActive={item === safePage} onClick={() => setCurrentPage(item)}>
-                          {item}
-                        </PaginationLink>
-                      </PaginationItem>
-                    )
-                  );
-                })()}
+                {pageItems.map((item, index) =>
+                  item === "ellipsis" ? (
+                    <PaginationItem key={`ellipsis-${index}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={item}>
+                      <PaginationLink isActive={item === safePage} onClick={() => setCurrentPage(item)}>
+                        {item}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                )}
                 <PaginationItem>
                   <PaginationNext
                     onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}

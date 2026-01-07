@@ -28,15 +28,15 @@ export function useCompanies(companyIds: number[], enabled = true) {
   return useQuery({
     queryKey: [...companyKeys.all, 'batch', companyIds.sort().join(',')],
     queryFn: async () => {
-      const companies = await Promise.all(
-        companyIds.map(async (id) => {
-          try {
-            return await getCompany(id);
-          } catch {
-            return null;
-          }
-        })
-      );
+      const requestMap = new Map<number, Promise<Company | null>>();
+      const fetchCompany = (id: number) => {
+        const existing = requestMap.get(id);
+        if (existing) return existing;
+        const request = getCompany(id).catch(() => null);
+        requestMap.set(id, request);
+        return request;
+      };
+      const companies = await Promise.all(companyIds.map((id) => fetchCompany(id)));
       return companies.filter((c): c is Company => c !== null);
     },
     enabled: enabled && companyIds.length > 0,
