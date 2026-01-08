@@ -15,9 +15,7 @@ import { fetchWithAuth } from "./fetchWithAuth";
 
 async function proxyRequest<T>(path: string, body: unknown, accessToken?: string | null): Promise<ApiResponse<T>> {
   const normalized = normalizeSort(body);
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-  const fullUrl = path.startsWith("http") ? path : `${baseUrl}${path}`;
-  return fetchWithAuth<T>(fullUrl, {
+  return fetchWithAuth<T>(path, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -35,7 +33,8 @@ export function searchJobs<T>(body: unknown, accessToken?: string | null) {
 export function searchApplications<T>(jobId: number, body: unknown, accessToken?: string | null) {
   return proxyRequest<T>(`/api/recruiter/jobs/${jobId}/applications/search`, body, accessToken);
 }
-
 export function getApplicationsCount<T>(jobIds: number[], accessToken?: string | null) {
-  return proxyRequest<T>("/api/jobs/applications/count", { jobIds }, accessToken);
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const path = baseUrl ? `${baseUrl}/api/jobs/applications/count` : "/api/jobs/applications/count";
+  return proxyRequest<T>(path, { jobIds }, accessToken);
 }

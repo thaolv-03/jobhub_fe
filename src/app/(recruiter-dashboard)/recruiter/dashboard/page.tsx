@@ -193,7 +193,7 @@ export default function RecruiterDashboardPage() {
       mounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobIdsKey, accessToken]);
+  }, [jobIdsKey, accessToken]); // Only depend on stable primitive values
 
   // Combine jobs with application counts
   const jobs = useMemo(() => {
