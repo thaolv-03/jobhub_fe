@@ -30,7 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { apiRequest, ApiError } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
-import { searchJobs, searchApplications } from '@/lib/recruiter-search';
+import { getApplicationsCount, searchJobs } from '@/lib/recruiter-search';
 import { SortableHeader } from "@/components/ui/sortable-header";
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -134,19 +134,22 @@ export default function RecruiterJobsPage() {
 
         const items = response.data?.items || [];
         setTotalCount(response.data?.count ?? 0);
-        const rows = await Promise.all(items.map(async (job) => {
+        let countMap: Record<string, number> = {};
+        if (items.length > 0) {
           try {
-            const apps = await searchApplications<PageListDTO<unknown>>(job.jobId, {
-              pagination: { page: 0, pageSize: 1 },
-              sortBy: null,
-              sortOrder: null,
-              searchedBy: "",
-              filter: null,
-            }, accessToken);
-            return { ...job, applicants: apps.data?.count || 0 };
+            const countsResponse = await getApplicationsCount<Record<string, number>>(
+              items.map((job) => job.jobId),
+              accessToken
+            );
+            countMap = countsResponse.data ?? {};
           } catch {
-            return { ...job, applicants: 0 };
+            countMap = {};
           }
+        }
+
+        const rows = items.map((job) => ({
+          ...job,
+          applicants: countMap[String(job.jobId)] ?? 0,
         }));
 
         setPostedJobs(rows);
