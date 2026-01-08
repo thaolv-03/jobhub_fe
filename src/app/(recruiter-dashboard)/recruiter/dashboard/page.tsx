@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/hooks/use-auth';
 import { useRecruiterJobs } from '@/hooks/use-jobs';
 import { useApplications } from '@/hooks/use-applications';
-import { searchApplications } from '@/lib/recruiter-search';
+import { getApplicationsCount } from '@/lib/recruiter-search';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import {
   Briefcase,
@@ -148,26 +148,18 @@ export default function RecruiterDashboardPage() {
   const jobItems = React.useMemo(() => jobsResponse?.items ?? [], [jobsResponse?.items]);
   
   // Extract job IDs for dependency comparison (stable reference)
-  const jobIds = React.useMemo(() => {
-    const ids = jobItems.map((job) => job.jobId).sort();
+  const jobIdList = React.useMemo(() => jobItems.map((job) => job.jobId), [jobItems]);
+  const jobIdsKey = React.useMemo(() => {
+    const ids = [...jobIdList].sort((a, b) => a - b);
     return ids.length > 0 ? ids.join(',') : '';
-  }, [jobItems]);
+  }, [jobIdList]);
 
   // Fetch application counts for all jobs in parallel using Promise.all
   const [applicationCounts, setApplicationCounts] = React.useState<Record<number, number>>({});
   const [isLoadingCounts, setIsLoadingCounts] = React.useState(false);
 
   React.useEffect(() => {
-    // Skip if no token or no jobs
-    if (!accessToken || jobIds === '') {
-      setApplicationCounts({});
-      setIsLoadingCounts(false);
-      return;
-    }
-
-    // Get current job items from response (fresh data)
-    const currentJobItems = jobsResponse?.items ?? [];
-    if (currentJobItems.length === 0) {
+    if (!accessToken || jobIdsKey === '') {
       setApplicationCounts({});
       setIsLoadingCounts(false);
       return;
@@ -176,40 +168,32 @@ export default function RecruiterDashboardPage() {
     let mounted = true;
     setIsLoadingCounts(true);
 
-    Promise.all(
-      currentJobItems.map(async (job) => {
-        try {
-          const result = await searchApplications<{ items: unknown[]; count: number }>(
-            job.jobId,
-            {
-              pagination: { page: 0, pageSize: 1 },
-              sortBy: undefined,
-              sortOrder: undefined,
-              searchedBy: "",
-              filter: null,
-            },
-            accessToken
-          );
-          return { jobId: job.jobId, count: result.data?.count ?? 0 };
-        } catch {
-          return { jobId: job.jobId, count: 0 };
-        }
+    getApplicationsCount<Record<string, number>>(jobIdList, accessToken)
+      .then((result) => {
+        if (!mounted) return;
+        const response = result.data ?? {};
+        const counts: Record<number, number> = {};
+        jobIdList.forEach((jobId) => {
+          counts[jobId] = response[String(jobId)] ?? 0;
+        });
+        setApplicationCounts(counts);
+        setIsLoadingCounts(false);
       })
-    ).then((results) => {
-      if (!mounted) return;
-      const counts: Record<number, number> = {};
-      results.forEach(({ jobId, count }) => {
-        counts[jobId] = count;
+      .catch(() => {
+        if (!mounted) return;
+        const counts: Record<number, number> = {};
+        jobIdList.forEach((jobId) => {
+          counts[jobId] = 0;
+        });
+        setApplicationCounts(counts);
+        setIsLoadingCounts(false);
       });
-      setApplicationCounts(counts);
-      setIsLoadingCounts(false);
-    });
 
     return () => {
       mounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobIds, accessToken]); // Only depend on stable primitive values
+  }, [jobIdsKey, accessToken]); // Only depend on stable primitive values
 
   // Combine jobs with application counts
   const jobs = useMemo(() => {
