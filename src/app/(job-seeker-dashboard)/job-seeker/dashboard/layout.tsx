@@ -32,13 +32,14 @@ import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar";
 import { fetchJobSeekerProfile } from "@/lib/job-seeker-profile";
 import {
   Bookmark,
+  Briefcase,
   ChevronsLeft,
   ChevronsRight,
   FileText,
   LayoutDashboard,
   LogOut,
   Settings,
-  UserCircle2,
+  Sparkles,
 } from "lucide-react";
 
 type NavItem = {
@@ -49,7 +50,8 @@ type NavItem = {
 };
 
 const jobSeekerNavItems: NavItem[] = [
-  { href: "/job-seeker/dashboard", label: "Dashboard", icon: LayoutDashboard, match: "exact" },
+  { href: "/job-seeker/dashboard", label: "Hồ sơ", icon: LayoutDashboard, match: "exact" },
+  { href: "/job-seeker/dashboard/recommendations", label: "Việc làm và gợi ý AI", icon: Sparkles, match: "exact" },
   { href: "/job-seeker/dashboard/applied-jobs", label: "Việc đã ứng tuyển", icon: FileText, match: "startsWith" },
   { href: "/job-seeker/dashboard/saved-jobs", label: "Việc đã lưu", icon: Bookmark, match: "startsWith" },
   { href: "/job-seeker/dashboard/settings", label: "Cài đặt", icon: Settings, match: "startsWith" },
@@ -57,9 +59,14 @@ const jobSeekerNavItems: NavItem[] = [
 
 const pageMetaMap = [
   {
+    match: "/job-seeker/dashboard/recommendations",
+    title: "Việc làm và gợi ý AI",
+    subtitle: "Danh sách công việc đề xuất dựa trên hồ sơ của bạn.",
+  },
+  {
     match: "/job-seeker/dashboard",
     exact: true,
-    title: "Tổng quan",
+    title: "Hồ sơ",
     subtitle: "Tóm tắt hồ sơ và hoạt động ứng tuyển gần đây.",
   },
   {
@@ -109,15 +116,24 @@ function JobSeekerSidebar({ pathname }: { pathname: string }) {
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader className="gap-3 border-b px-4 py-4">
         <Link
-          href="/job-seeker/dashboard"
-          className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center"
+          href="/"
+          className="flex flex-col items-start gap-2 group-data-[collapsible=icon]:items-center"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <UserCircle2 className="h-5 w-5" />
-          </span>
-          <div className="leading-tight group-data-[collapsible=icon]:hidden">
-            <p className="text-base font-semibold">JobHub</p>
-            <p className="text-xs text-muted-foreground">Job Seeker Dashboard</p>
+          <div className="flex items-center">
+            <img
+              src="/images/LogoJobHub_Black.png"
+              alt="JobHub"
+              className="h-14 w-auto object-contain group-data-[collapsible=icon]:h-10 dark:hidden"
+            />
+            <img
+              src="/images/logoJobHub.png"
+              alt="JobHub"
+              className="hidden h-14 w-auto object-contain group-data-[collapsible=icon]:h-10 dark:block"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+            <Briefcase className="h-4 w-4 text-emerald-500" />
+            <span>Bảng điều khiển ứng viên</span>
           </div>
         </Link>
       </SidebarHeader>
@@ -207,14 +223,14 @@ export default function JobSeekerDashboardLayout({
           rightActions={
             <>
               <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
-                <Link href="/">Về trang chủ</Link>
+                <Link href="/">Về trang chủ</Link>
               </Button>
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={avatarUrl || undefined} alt="Job seeker avatar" />
+                      <AvatarImage src={avatarUrl || undefined} alt="Ảnh đại diện ứng viên" />
                       <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                   </Button>
@@ -236,6 +252,3 @@ export default function JobSeekerDashboardLayout({
     </SidebarProvider>
   );
 }
-
-
-

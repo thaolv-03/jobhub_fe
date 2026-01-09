@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -393,7 +393,11 @@ export default function JobsPage() {
                   const companyName = job.companyName ?? company?.companyName ?? "Unknown";
                   const companyAvatar = job.companyAvatarUrl ?? company?.avatarUrl ?? null;
                   return (
-                    <Card key={job.jobId} className="hover:shadow-md transition-shadow">
+                    <Card
+                      key={job.jobId}
+                      className="cursor-pointer border-emerald-100/80 bg-emerald-50/50 transition-shadow hover:shadow-md"
+                      onClick={() => router.push(`/jobs/${job.jobId}`)}
+                    >
                       <CardHeader className="grid grid-cols-[auto_1fr_auto] items-start gap-4">
                         {companyAvatar ? (
                           <Image
@@ -429,7 +433,10 @@ export default function JobsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleToggleFavorite(job.jobId)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleToggleFavorite(job.jobId);
+                            }}
                             aria-label="Toggle favorite"
                           >
                             {favoriteIds.has(job.jobId) ? (
@@ -439,7 +446,7 @@ export default function JobsPage() {
                             )}
                           </Button>
                           <Link href={`/jobs/${job.jobId}`}>
-                            <Button variant="secondary">Xem chi tiết</Button>
+                            <Button className="bg-emerald-600 text-white hover:bg-emerald-700">Ứng tuyển</Button>
                           </Link>
                         </div>
                       </CardHeader>
@@ -501,4 +508,6 @@ export default function JobsPage() {
     </div>
   );
 }
+
+
 

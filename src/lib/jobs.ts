@@ -33,6 +33,7 @@ export type PageList<T> = {
 };
 
 export type JobFilter = {
+  statuses?: string[];
   locations?: string[];
   jobTypes?: JobType[];
   salaryMin?: number | null;

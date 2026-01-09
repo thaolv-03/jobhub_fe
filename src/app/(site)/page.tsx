@@ -283,6 +283,117 @@ export default function Home() {
           </div>
         </Container>
       </section>
+      <section className="py-12 md:py-16">
+        <Container>
+          <div className="rounded-3xl border bg-[linear-gradient(135deg,_#ecfdf5,_#f8fafc)] p-8 shadow-sm md:p-12">
+            <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+              <div className="space-y-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600">Về JobHub</p>
+                <h3 className="text-2xl font-bold md:text-3xl">
+                  Kết nối ứng viên và doanh nghiệp theo cách đơn giản hơn.
+                </h3>
+                <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
+                  JobHub tập trung vào trải nghiệm tìm việc rõ ràng, lọc nhanh và minh bạch
+                  để bạn tiết kiệm thời gian mà vẫn chọn được vị trí phù hợp.
+                </p>
+                <div className="grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-2 h-2 w-2 rounded-full bg-emerald-500" />
+                    Hồ sơ công ty đầy đủ, dễ so sánh.
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-2 h-2 w-2 rounded-full bg-emerald-500" />
+                    Tin tuyển dụng cập nhật mỗi ngày.
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-2 h-2 w-2 rounded-full bg-emerald-500" />
+                    Lọc theo kỹ năng, mức lương, khu vực.
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-2 h-2 w-2 rounded-full bg-emerald-500" />
+                    Theo dõi ứng tuyển ngay trong một nơi.
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Link href="/jobs">
+                    <Button size="sm">Khám phá việc làm</Button>
+                  </Link>
+                  <Link href="/companies">
+                    <Button variant="outline" size="sm">Xem công ty</Button>
+                  </Link>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border bg-white/70 p-5">
+                  <p className="text-2xl font-bold text-foreground">1k+</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Việc đang mở</p>
+                </div>
+                <div className="rounded-2xl border bg-white/70 p-5">
+                  <p className="text-2xl font-bold text-foreground">300+</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Nhà tuyển dụng</p>
+                </div>
+                <div className="rounded-2xl border bg-white/70 p-5">
+                  <p className="text-2xl font-bold text-foreground">24h</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Cập nhật job mới</p>
+                </div>
+                <div className="rounded-2xl border bg-white/70 p-5">
+                  <p className="text-2xl font-bold text-foreground">Top</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Công ty nổi bật</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <section className="py-12 md:py-16">
+        <Container>
+          <div className="rounded-3xl border bg-secondary/40 p-8 shadow-sm md:p-12">
+            <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border bg-background p-5">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">Bước 1</p>
+                  <p className="mt-3 text-sm font-semibold">Tạo tin tuyển dụng chuẩn</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Mẫu tin rõ ràng, dễ thu hút ứng viên.</p>
+                </div>
+                <div className="rounded-2xl border bg-background p-5">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">Bước 2</p>
+                  <p className="mt-3 text-sm font-semibold">Sàng lọc hồ sơ nhanh</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Lọc theo kỹ năng, kinh nghiệm, địa điểm.</p>
+                </div>
+                <div className="rounded-2xl border bg-background p-5">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">Bước 3</p>
+                  <p className="mt-3 text-sm font-semibold">Theo dõi ứng tuyển</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Quản lý pipeline ứng viên tập trung.</p>
+                </div>
+                <div className="rounded-2xl border bg-background p-5">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">Bước 4</p>
+                  <p className="mt-3 text-sm font-semibold">Đánh giá & phản hồi</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Tăng trải nghiệm ứng viên tích cực.</p>
+                </div>
+              </div>
+              <div className="space-y-5 text-right">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-foreground">Dành cho nhà tuyển dụng</p>
+                <h3 className="text-2xl font-bold md:text-3xl">
+                  Tuyển đúng người, đúng thời điểm.
+                </h3>
+                <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
+                  Tối ưu quy trình tuyển dụng với các công cụ theo dõi, lọc và báo cáo,
+                  giúp đội ngũ tuyển dụng giảm thời gian xử lý.
+                </p>
+                <div className="flex flex-wrap justify-end gap-3">
+                  <Link href="/recruiter">
+                    <Button size="sm">Đăng tin tuyển dụng</Button>
+                  </Link>
+                  <Link href="#">
+                    <Button variant="outline" size="sm">Xem gói dịch vụ</Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Container>
+      </section>
 
       <section className="py-16 md:py-20">
         <Container>
@@ -326,3 +437,6 @@ export default function Home() {
     </div>
   );
 }
+
+
+

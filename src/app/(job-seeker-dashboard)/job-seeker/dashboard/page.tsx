@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -8,16 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { FileText, Upload, X, Loader2, Search as SearchIcon, ArrowUp, ArrowDown } from "lucide-react";
+import { FileText, Upload, X, Loader2, Sparkles } from "lucide-react";
 import React from "react";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Image from "next/image";
@@ -40,7 +31,6 @@ import {
 } from "@/lib/job-seeker-profile";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api-types";
-import { recommendJobs, type Job } from "@/lib/jobs";
 import { updateAccount } from "@/lib/auth-storage";
 import { createJobSeekerSkill, deleteJobSeekerSkill, listJobSeekerSkills, type JobSeekerSkill } from "@/lib/job-seeker-skills";
 import { JOB_TAGS } from "@/lib/job-form-data";
@@ -59,12 +49,6 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const MAX_AVATAR_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png"];
-const DEFAULT_PAGE_SIZE = 10;
-
-const fallbackRecommendedJobs = [
-  { id: 4, title: "Product Manager", company: "MoMo", location: "TP. Hồ Chí Minh", salary: "Cạnh tranh", logoId: "company-logo-momo" },
-  { id: 5, title: "Kỹ sư DevOps", company: "Tiki", location: "Hà Nội", salary: "Trên $2000", logoId: "company-logo-tiki" },
-];
 
 export default function JobSeekerDashboardPage() {
   const { toast } = useToast();
@@ -83,8 +67,6 @@ export default function JobSeekerDashboardPage() {
   const [selectedSkill, setSelectedSkill] = React.useState("");
   const [skillSearch, setSkillSearch] = React.useState("");
   const [customSkill, setCustomSkill] = React.useState("");
-  const [recommendedJobs, setRecommendedJobs] = React.useState<Job[]>([]);
-  const [isRecommendedLoading, setIsRecommendedLoading] = React.useState(false);
   const [cvOnlineFileName, setCvOnlineFileName] = React.useState<string | null>(null);
   const [cvOnlineFile, setCvOnlineFile] = React.useState<File | null>(null);
   const [cvOnlineMeta, setCvOnlineMeta] = React.useState<CvOnlineMeta | null>(null);
@@ -92,11 +74,6 @@ export default function JobSeekerDashboardPage() {
   const [isCvOnlineSaving, setIsCvOnlineSaving] = React.useState(false);
   const [isCvOnlineLoading, setIsCvOnlineLoading] = React.useState(false);
   const [isCvOnlineOpen, setIsCvOnlineOpen] = React.useState(false);
-  const [recommendedSearch, setRecommendedSearch] = React.useState("");
-  const [recommendedSortBy, setRecommendedSortBy] = React.useState<string | null>(null);
-  const [recommendedSortOrder, setRecommendedSortOrder] = React.useState<"ASC" | "DESC" | null>(null);
-  const [recommendedPage, setRecommendedPage] = React.useState(0);
-  const allowedRecommendedSortFields = React.useMemo(() => new Set(["title"]), []);
 
   const cvOnlineForm = useForm<CvOnlineFormValues>({
     defaultValues: buildCvOnlineDefaults(null),
@@ -144,78 +121,6 @@ export default function JobSeekerDashboardPage() {
       });
     }
   }, [account?.email, form, reload, toast]);
-
-  React.useEffect(() => {
-    void loadProfile();
-  }, [loadProfile]);
-
-  React.useEffect(() => {
-    let mounted = true;
-    const loadSkills = async () => {
-      try {
-        const list = await listJobSeekerSkills();
-        if (!mounted) return;
-        setSkills(list);
-        setInitialSkills(list);
-      } catch (error) {
-        if (!mounted) return;
-        setSkills([]);
-      }
-    };
-    void loadSkills();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    let mounted = true;
-    const loadSkillOptions = async () => {
-      try {
-        const names = Array.from(
-          new Set(
-            JOB_TAGS
-              .map((tag) => tag.name?.trim())
-              .filter((name): name is string => Boolean(name))
-          )
-        ).sort((a, b) => a.localeCompare(b));
-        if (!mounted) return;
-        setSkillOptions(names);
-      } catch (error) {
-        if (!mounted) return;
-        setSkillOptions([]);
-      }
-    };
-    void loadSkillOptions();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    let mounted = true;
-    const loadRecommendations = async () => {
-      try {
-        setIsRecommendedLoading(true);
-        const data = await recommendJobs({
-          pagination: { page: 0, pageSize: 10 },
-          sortBy: "createAt",
-          sortOrder: "DESC",
-        });
-        if (!mounted) return;
-        setRecommendedJobs(data.items);
-      } catch {
-        if (!mounted) return;
-        setRecommendedJobs([]);
-      } finally {
-        if (mounted) setIsRecommendedLoading(false);
-      }
-    };
-    void loadRecommendations();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const normalizeSkill = (value: string) => value.trim().toLowerCase();
 
@@ -337,7 +242,7 @@ export default function JobSeekerDashboardPage() {
     if (!avatarFile) {
       toast({
         title: "Lỗi",
-        description: "Vui lòng chọn ảnh để tải lên.",
+        description: "Vui lòng chọn ảnh  tải lên.",
         variant: "destructive",
       });
       return;
@@ -406,11 +311,11 @@ export default function JobSeekerDashboardPage() {
       await deleteJobSeekerCv();
       setUploadedCvs((current) => current.filter((cv) => cv !== cvName));
       setCvUrl(null);
-      toast({ title: "Đã xóa CV.", description: `${cvName} đã được xóa.`, variant: "destructive" });
+      toast({ title: "Đã xoá CV.", description: `${cvName} đã được xoá.`, variant: "destructive" });
     } catch (error) {
       const apiError = error instanceof ApiError ? error : null;
       toast({
-        title: "Xóa CV thất bại",
+        title: "Xoá CV thất bại",
         description: apiError?.message ?? "Vui lòng thử lại sau.",
         variant: "destructive",
       });
@@ -534,81 +439,6 @@ export default function JobSeekerDashboardPage() {
     setCvOnlineFile(null);
     cvOnlineForm.reset(cvOnlineMeta ? buildCvOnlineDefaults(cvOnlineMeta.parsedData) : buildCvOnlineDefaults(null));
   };
-
-  const recommendedItems: { id: number; title: string; company: string; logoUrl?: string | null; logoId?: string }[] = recommendedJobs.length > 0
-    ? recommendedJobs.map((job) => ({
-        id: job.jobId,
-        title: job.title,
-        company: job.companyName ?? "Unknown",
-        logoUrl: job.companyAvatarUrl ?? null,
-      }))
-    : fallbackRecommendedJobs.map((job) => ({
-        id: job.id,
-        title: job.title,
-        company: job.company,
-        logoUrl: null as string | null,
-        logoId: job.logoId,
-      }));
-
-  React.useEffect(() => {
-    setRecommendedSortBy(null);
-    setRecommendedSortOrder(null);
-    if (recommendedPage !== 0) {
-      setRecommendedPage(0);
-    }
-  }, [recommendedSearch]);
-
-  const handleRecommendedSortChange = (value: string) => {
-    if (value === "none") {
-      setRecommendedSortBy(null);
-      setRecommendedSortOrder(null);
-      if (recommendedPage !== 0) {
-        setRecommendedPage(0);
-      }
-      return;
-    }
-    if (!allowedRecommendedSortFields.has(value)) {
-      setRecommendedSortBy(null);
-      setRecommendedSortOrder(null);
-      if (recommendedPage !== 0) {
-        setRecommendedPage(0);
-      }
-      return;
-    }
-    setRecommendedSortBy(value);
-    setRecommendedSortOrder("ASC");
-    if (recommendedPage !== 0) {
-      setRecommendedPage(0);
-    }
-  };
-
-  const filteredRecommended = React.useMemo(() => {
-    const keyword = recommendedSearch.trim().toLowerCase();
-    if (!keyword) return recommendedItems;
-    return recommendedItems.filter((job) => {
-      const haystack = [job.title, job.company].join(" ").toLowerCase();
-      return haystack.includes(keyword);
-    });
-  }, [recommendedItems, recommendedSearch]);
-
-  const sortedRecommended = React.useMemo(() => {
-    if (!recommendedSortBy || !recommendedSortOrder) return filteredRecommended;
-    if (!allowedRecommendedSortFields.has(recommendedSortBy)) return filteredRecommended;
-    const direction = recommendedSortOrder === "ASC" ? 1 : -1;
-    return [...filteredRecommended].sort((a, b) => {
-      const valueA = a.title;
-      const valueB = b.title;
-      return String(valueA).localeCompare(String(valueB)) * direction;
-    });
-  }, [filteredRecommended, recommendedSortBy, recommendedSortOrder, allowedRecommendedSortFields]);
-
-  const recommendedTotalPages = Math.max(1, Math.ceil(sortedRecommended.length / DEFAULT_PAGE_SIZE));
-  const visibleRecommended = React.useMemo(() => {
-    const start = recommendedPage * DEFAULT_PAGE_SIZE;
-    return sortedRecommended.slice(start, start + DEFAULT_PAGE_SIZE);
-  }, [sortedRecommended, recommendedPage]);
-
-
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -736,7 +566,7 @@ export default function JobSeekerDashboardPage() {
                           <Input
                             value={skillSearch}
                             onChange={(event) => setSkillSearch(event.target.value)}
-                            placeholder="Search skills..."
+                            placeholder="Tìm kỹ năng..."
                           />
                           {(() => {
                             const normalizedQuery = skillSearch.trim().toLowerCase();
@@ -754,7 +584,7 @@ export default function JobSeekerDashboardPage() {
                               <div className="mt-2 max-h-56 overflow-auto rounded-md border bg-white p-1 shadow-sm dark:border-slate-700/70 dark:bg-slate-900">
                                 {filteredOptions.length === 0 ? (
                                   <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
-                                    No skills found
+                                    Không tìm thấy kỹ năng
                                   </div>
                                 ) : (
                                   filteredOptions.map((option) => (
@@ -783,14 +613,14 @@ export default function JobSeekerDashboardPage() {
                             }}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Choose available skills" />
+                              <SelectValue placeholder="Chọn kỹ năng có sẵn" />
                             </SelectTrigger>
                             <SelectContent>
                               {(() => {
                                 if (skillOptions.length === 0) {
                                   return (
                                     <SelectItem value="__empty" disabled>
-                                      No skills available
+                                      Không có kỹ năng nào
                                     </SelectItem>
                                   );
                                 }
@@ -803,7 +633,7 @@ export default function JobSeekerDashboardPage() {
                                 if (availableOptions.length === 0) {
                                   return (
                                     <SelectItem value="__empty" disabled>
-                                      No skills found
+                                      Không tìm thấy kỹ năng
                                     </SelectItem>
                                   );
                                 }
@@ -818,7 +648,7 @@ export default function JobSeekerDashboardPage() {
 
                           <div className="flex flex-col gap-2 sm:flex-row">
                             <Input
-                              placeholder="Add a new skill..."
+                              placeholder="Thêm kỹ năng mới..."
                               value={customSkill}
                               onChange={(event) => setCustomSkill(event.target.value)}
                             />
@@ -828,7 +658,7 @@ export default function JobSeekerDashboardPage() {
                               
                               onClick={() => addSkillByName(customSkill)}
                             >
-                              Add
+                              Thêm
                             </Button>
                           </div>
 
@@ -856,7 +686,7 @@ export default function JobSeekerDashboardPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit">Lưu thay đổi</Button>
+                  <Button type="submit">Lưu thay i</Button>
                 </form>
               </Form>
             </CardContent>
@@ -866,7 +696,7 @@ export default function JobSeekerDashboardPage() {
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
                 <CardTitle>Quản lý CV</CardTitle>
-                <CardDescription>Tải lên và quản lý các CV của bạn để sẵn sàng ứng tuyển.</CardDescription>
+                <CardDescription>Tải lên và quản lý các CV của bạn sẵn sàng ứng tuyển.</CardDescription>
               </div>
               <Button variant="outline" onClick={() => handleCvOnlineDialogChange(true)}>
                 CV Online (AI)
@@ -918,144 +748,32 @@ export default function JobSeekerDashboardPage() {
             </CardContent>
           </Card>
         </div>
-
-
-          
         <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
-          <Card>
-            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle>Gợi ý cho bạn</CardTitle>
-                <CardDescription>Các công việc phù hợp với kỹ năng của bạn.</CardDescription>
+          <Card className="border-dashed bg-[linear-gradient(135deg,_#ecfeff,_#f8fafc)] shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-600">
+                <Sparkles className="h-4 w-4" />
+                Đề xuất việc làm
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative w-full sm:w-56">
-                  <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={recommendedSearch}
-                    onChange={(event) => setRecommendedSearch(event.target.value)}
-                    placeholder="Tìm gợi ý"
-                    className="pl-9"
-                  />
-                </div>
-                <Select value={recommendedSortBy ?? "none"} onValueChange={handleRecommendedSortChange}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Sắp xếp" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Không sắp xếp</SelectItem>
-                    <SelectItem value="title">Tên công việc</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={!recommendedSortBy}
-                  onClick={() => {
-                    setRecommendedSortOrder((order) => (order === "ASC" ? "DESC" : "ASC"));
-                    if (recommendedPage !== 0) {
-                      setRecommendedPage(0);
-                    }
-                  }}
-                >
-                  {recommendedSortOrder === "DESC" ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
-                </Button>
-              </div>
+              <CardTitle className="text-xl">Bạn muốn thử tính năng gợi ý việc làm?</CardTitle>
+              <CardDescription className="text-sm leading-relaxed">
+                Hệ thống sẽ đề xuất công việc dựa trên kỹ năng và lịch sử ứng tuyển.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
-              {isRecommendedLoading ? (
-                <p className="text-sm text-muted-foreground">Đang tải gợi ý...</p>
-              ) : visibleRecommended.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Chưa có gợi ý phù hợp.</p>
-              ) : (
-                visibleRecommended.map((job) => {
-                  const logo = !job.logoUrl && job.logoId ? PlaceHolderImages.find((p) => p.id === job.logoId) : null;
-                  return (
-                    <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-start gap-4 group">
-                      {job.logoUrl ? (
-                        <img
-                          src={job.logoUrl}
-                          alt={`${job.company} logo`}
-                          className="h-12 w-12 rounded-lg object-cover"
-                        />
-                      ) : logo ? (
-                        <Image
-                          src={logo.imageUrl}
-                          alt={`${job.company} logo`}
-                          width={48}
-                          height={48}
-                          className="rounded-lg"
-                          data-ai-hint={logo.imageHint}
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded-lg bg-muted" />
-                      )}
-                      <div className="grid gap-1">
-                        <p className="text-sm font-medium leading-none group-hover:text-primary">{job.title}</p>
-                        <p className="text-sm text-muted-foreground">{job.company}</p>
-                      </div>
-                      <Button variant="outline" size="sm" className="ml-auto opacity-0 group-hover:opacity-100">
-                        Xem
-                      </Button>
-                    </Link>
-                  );
-                })
-              )}
-              <Pagination className="mt-2">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => setRecommendedPage((prev) => Math.max(0, prev - 1))}
-                      className={recommendedPage === 0 ? "pointer-events-none opacity-50" : undefined}
-                    />
-                  </PaginationItem>
-                  {(() => {
-                    const pages = new Set<number>([
-                      0,
-                      recommendedTotalPages - 1,
-                      recommendedPage - 1,
-                      recommendedPage,
-                      recommendedPage + 1,
-                    ]);
-                    const sorted = Array.from(pages)
-                      .filter((page) => page >= 0 && page < recommendedTotalPages)
-                      .sort((a, b) => a - b);
-                    const items: Array<number | "ellipsis"> = [];
-                    let prev = -1;
-                    sorted.forEach((page) => {
-                      if (prev !== -1 && page - prev > 1) {
-                        items.push("ellipsis");
-                      }
-                      items.push(page);
-                      prev = page;
-                    });
-                    return items.map((item, index) =>
-                      item === "ellipsis" ? (
-                        <PaginationItem key={`ellipsis-${index}`}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : (
-                        <PaginationItem key={item}>
-                          <PaginationLink
-                            isActive={item === recommendedPage}
-                            onClick={() => setRecommendedPage(item)}
-                          >
-                            {item + 1}
-                          </PaginationLink>
-                        </PaginationItem>
-                      )
-                    );
-                  })()}
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() =>
-                        setRecommendedPage((prev) => Math.min(recommendedTotalPages - 1, prev + 1))
-                      }
-                      className={recommendedPage >= recommendedTotalPages - 1 ? "pointer-events-none opacity-50" : undefined}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+            <CardContent className="space-y-4">
+              <div className="mb-5 mx-auto w-full max-w-[520px] overflow-hidden rounded-2xl border bg-white/70">
+                <Image
+                  src="/images/jobs/recomen.png"
+                  alt="Gợi ý việc làm AI"
+                  width={720}
+                  height={360}
+                  className="h-52 w-full object-cover sm:h-60"
+                  priority
+                />
+              </div>
+              <Button asChild className="w-full">
+                <Link href="/job-seeker/dashboard/recommendations">Xem gợi ý AI</Link>
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -1063,6 +781,9 @@ export default function JobSeekerDashboardPage() {
     </div>
   );
 }
+
+
+
 
 
 
