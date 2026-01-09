@@ -52,7 +52,7 @@ const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png"];
 
 export default function JobSeekerDashboardPage() {
   const { toast } = useToast();
-  const { account, reload, roles } = useAuth();
+  const { account, roles } = useAuth();
   const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = React.useState<string | null>(null);
   const [avatarFile, setAvatarFile] = React.useState<File | null>(null);
@@ -74,6 +74,8 @@ export default function JobSeekerDashboardPage() {
   const [isCvOnlineSaving, setIsCvOnlineSaving] = React.useState(false);
   const [isCvOnlineLoading, setIsCvOnlineLoading] = React.useState(false);
   const [isCvOnlineOpen, setIsCvOnlineOpen] = React.useState(false);
+  const lastProfileEmailRef = React.useRef<string | null>(null);
+  const lastSkillsEmailRef = React.useRef<string | null>(null);
 
   const cvOnlineForm = useForm<CvOnlineFormValues>({
     defaultValues: buildCvOnlineDefaults(null),
@@ -112,7 +114,6 @@ export default function JobSeekerDashboardPage() {
         if (!current || typeof current !== "object") return current;
         return { ...(current as any), avatarUrl: profile?.avatarUrl ?? null };
       });
-      reload();
     } catch (error) {
       toast({
         title: "Không tải được hồ sơ",
@@ -120,10 +121,13 @@ export default function JobSeekerDashboardPage() {
         variant: "destructive",
       });
     }
-  }, [account?.email, form, reload, toast]);
+  }, [account?.email, form, toast]);
 
   React.useEffect(() => {
     if (!account || !roles.includes("JOB_SEEKER")) return;
+    const key = account.email ?? "unknown";
+    if (lastProfileEmailRef.current === key) return;
+    lastProfileEmailRef.current = key;
     void loadProfile();
   }, [account, loadProfile, roles]);
 
@@ -132,7 +136,10 @@ export default function JobSeekerDashboardPage() {
   }, []);
 
   React.useEffect(() => {
-    if (!roles.includes("JOB_SEEKER")) return;
+    if (!account || !roles.includes("JOB_SEEKER")) return;
+    const key = account.email ?? "unknown";
+    if (lastSkillsEmailRef.current === key) return;
+    lastSkillsEmailRef.current = key;
     let mounted = true;
     const loadSkills = async () => {
       try {
@@ -153,7 +160,7 @@ export default function JobSeekerDashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [roles, toast]);
+  }, [account, roles, toast]);
 
   const normalizeSkill = (value: string) => value.trim().toLowerCase();
 
