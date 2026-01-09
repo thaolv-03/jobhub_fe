@@ -23,16 +23,16 @@ export function SiteShell({ children }: SiteShellProps) {
                   JobHub
                 </Link>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Ket noi co hoi nghe nghiep va doanh nghiep hang dau.
+                  Kết nối cơ hội nghề nghiệp và doanh nghiệp hàng đầu.
                 </p>
               </div>
               <div className="space-y-2 text-sm">
-                <p className="font-semibold text-foreground">Lien he</p>
+                <p className="font-semibold text-foreground">Liên hệ</p>
                 <p className="text-muted-foreground">Hotline: (024) 7107 6480</p>
                 <p className="text-muted-foreground">Email: hotro@jobhub.vn</p>
               </div>
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-foreground">Ung dung tai xuong</p>
+                <p className="text-sm font-semibold text-foreground">Ứng dụng tải xuống</p>
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href="#"
@@ -52,35 +52,35 @@ export function SiteShell({ children }: SiteShellProps) {
 
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-3 text-sm">
-                <p className="font-semibold text-foreground">Ve JobHub</p>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Gioi thieu</Link>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Goc bao chi</Link>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Tuyen dung</Link>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Lien he</Link>
-                <Link href="/chinh-sach" className="block text-muted-foreground hover:text-foreground">Chinh sach bao mat</Link>
+                <p className="font-semibold text-foreground">Về JobHub</p>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Giới thiệu</Link>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Góc báo chí</Link>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Tuyển dụng</Link>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Liên hệ</Link>
+                <Link href="/chinh-sach" className="block text-muted-foreground hover:text-foreground">Chính sách bảo mật</Link>
               </div>
               <div className="space-y-3 text-sm">
-                <p className="font-semibold text-foreground">Ho so va CV</p>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Quan ly CV cua ban</Link>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Huong dan viet CV</Link>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Thu vien CV theo nganh</Link>
+                <p className="font-semibold text-foreground">Hồ sơ và CV</p>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Quản lý CV của bạn</Link>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Hướng dẫn viết CV</Link>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Thư viện CV theo ngành</Link>
                 <Link href="#" className="block text-muted-foreground hover:text-foreground">Review CV</Link>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Hoi dap</Link>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Hỏi đáp</Link>
               </div>
               <div className="space-y-3 text-sm">
-                <p className="font-semibold text-foreground">Xay dung su nghiep</p>
-                <Link href="/jobs" className="block text-muted-foreground hover:text-foreground">Viec lam tot nhat</Link>
-                <Link href="/jobs" className="block text-muted-foreground hover:text-foreground">Viec lam luong cao</Link>
-                <Link href="/jobs" className="block text-muted-foreground hover:text-foreground">Viec lam quan ly</Link>
-                <Link href="/jobs" className="block text-muted-foreground hover:text-foreground">Viec lam IT</Link>
-                <Link href="/jobs" className="block text-muted-foreground hover:text-foreground">Viec lam ban thoi gian</Link>
+                <p className="font-semibold text-foreground">Xây dựng sự nghiệp</p>
+                <Link href="/jobs" className="block text-muted-foreground hover:text-foreground">Việc làm tốt nhất</Link>
+                <Link href="/jobs" className="block text-muted-foreground hover:text-foreground">Việc làm lương cao</Link>
+                <Link href="/jobs" className="block text-muted-foreground hover:text-foreground">Việc làm quản lý</Link>
+                <Link href="/jobs" className="block text-muted-foreground hover:text-foreground">Việc làm IT</Link>
+                <Link href="/jobs" className="block text-muted-foreground hover:text-foreground">Việc làm bán thời gian</Link>
               </div>
               <div className="space-y-3 text-sm">
-                <p className="font-semibold text-foreground">Quy tac chung</p>
-                <Link href="/dieu-khoan" className="block text-muted-foreground hover:text-foreground">Dieu kien giao dich chung</Link>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Gia dich vu & Thanh toan</Link>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Thong tin van chuyen</Link>
-                <Link href="#" className="block text-muted-foreground hover:text-foreground">Quy che hoat dong</Link>
+                <p className="font-semibold text-foreground">Quy tắc chung</p>
+                <Link href="/dieu-khoan" className="block text-muted-foreground hover:text-foreground">Điều kiện giao dịch chung</Link>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Giá dịch vụ & Thanh toán</Link>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Thông tin vận chuyển</Link>
+                <Link href="#" className="block text-muted-foreground hover:text-foreground">Quy chế hoạt động</Link>
               </div>
             </div>
           </div>
@@ -88,8 +88,8 @@ export function SiteShell({ children }: SiteShellProps) {
           <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t pt-6 text-xs text-muted-foreground md:flex-row">
             <span>© {new Date().getFullYear()} JobHub. All rights reserved.</span>
             <div className="flex gap-4">
-              <Link href="/dieu-khoan" className="hover:text-foreground">Dieu khoan</Link>
-              <Link href="/chinh-sach" className="hover:text-foreground">Chinh sach</Link>
+              <Link href="/dieu-khoan" className="hover:text-foreground">Điều khoản</Link>
+              <Link href="/chinh-sach" className="hover:text-foreground">Chính sách</Link>
             </div>
           </div>
         </Container>
@@ -97,3 +97,4 @@ export function SiteShell({ children }: SiteShellProps) {
     </div>
   );
 }
+

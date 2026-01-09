@@ -52,7 +52,7 @@ const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png"];
 
 export default function JobSeekerDashboardPage() {
   const { toast } = useToast();
-  const { account, reload } = useAuth();
+  const { account, reload, roles } = useAuth();
   const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = React.useState<string | null>(null);
   const [avatarFile, setAvatarFile] = React.useState<File | null>(null);
@@ -121,6 +121,39 @@ export default function JobSeekerDashboardPage() {
       });
     }
   }, [account?.email, form, reload, toast]);
+
+  React.useEffect(() => {
+    if (!account || !roles.includes("JOB_SEEKER")) return;
+    void loadProfile();
+  }, [account, loadProfile, roles]);
+
+  React.useEffect(() => {
+    setSkillOptions(JOB_TAGS.map((tag) => tag.name));
+  }, []);
+
+  React.useEffect(() => {
+    if (!roles.includes("JOB_SEEKER")) return;
+    let mounted = true;
+    const loadSkills = async () => {
+      try {
+        const existing = await listJobSeekerSkills();
+        if (!mounted) return;
+        setSkills(existing);
+        setInitialSkills(existing);
+      } catch (error) {
+        if (!mounted) return;
+        toast({
+          title: "Không tải được kỹ năng",
+          description: "Vui lòng thử lại sau.",
+          variant: "destructive",
+        });
+      }
+    };
+    void loadSkills();
+    return () => {
+      mounted = false;
+    };
+  }, [roles, toast]);
 
   const normalizeSkill = (value: string) => value.trim().toLowerCase();
 
