@@ -59,8 +59,6 @@ export function RecommendedJobsPanel() {
       setIsRecommendedLoading(true);
       const data = await recommendJobs({
         pagination: { page: 0, pageSize: 10 },
-        sortBy: "createAt",
-        sortOrder: "DESC",
       });
       if (!mounted) return;
       setRecommendedJobs(data.items);
