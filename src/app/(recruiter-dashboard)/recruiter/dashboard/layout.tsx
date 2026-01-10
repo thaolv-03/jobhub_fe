@@ -343,14 +343,23 @@ function RecruiterSidebar({
       <SidebarHeader className="gap-3 border-b px-4 py-4 border-slate-200/70 dark:border-slate-800">
         <Link
           href="/recruiter/dashboard"
-          className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center"
+          className="flex flex-col items-start gap-2 group-data-[collapsible=icon]:items-center"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary dark:bg-primary/20">
-            <Building2 className="h-5 w-5" />
-          </span>
-          <div className="leading-tight group-data-[collapsible=icon]:hidden">
-            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">JobHub</p>
-            <p className="text-xs text-muted-foreground dark:text-slate-400">Recruiter Dashboard</p>
+          <div className="flex items-center">
+            <img
+              src="/images/LogoJobHub_Black.png"
+              alt="JobHub"
+              className="h-14 w-auto object-contain group-data-[collapsible=icon]:h-10 dark:hidden"
+            />
+            <img
+              src="/images/logoJobHub.png"
+              alt="JobHub"
+              className="hidden h-14 w-auto object-contain group-data-[collapsible=icon]:h-10 dark:block"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden dark:text-slate-400">
+            <Briefcase className="h-4 w-4 text-emerald-500" />
+            <span>Bảng điều khiển nhà tuyển dụng</span>
           </div>
         </Link>
       </SidebarHeader>

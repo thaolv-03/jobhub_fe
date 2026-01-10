@@ -24,8 +24,7 @@ export const config = {
     matcher: [
         '/job-seeker/dashboard/:path*',
         '/recruiter/dashboard/:path*',
-        // Add /admin/:path* if you have admin routes in the future
-        // '/admin/:path*',
+        '/admin/:path*',
     ],
 };
 

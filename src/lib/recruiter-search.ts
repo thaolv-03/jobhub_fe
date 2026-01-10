@@ -1,4 +1,5 @@
 import type { ApiResponse } from "./api-types";
+import { fetchWithAuth } from "./fetchWithAuth";
 
 type SortOrder = "ASC" | "DESC";
 
@@ -11,11 +12,12 @@ const normalizeSort = (body: unknown) => {
   const { sortBy: _sortBy, sortOrder: _sortOrder, ...rest } = payload;
   return { ...rest, sortedBy };
 };
-import { fetchWithAuth } from "./fetchWithAuth";
 
 async function proxyRequest<T>(path: string, body: unknown, accessToken?: string | null): Promise<ApiResponse<T>> {
   const normalized = normalizeSort(body);
-  return fetchWithAuth<T>(path, {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const url = path.startsWith("http") ? path : `${baseUrl}${path}`;
+  return fetchWithAuth<T>(url, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -34,7 +36,5 @@ export function searchApplications<T>(jobId: number, body: unknown, accessToken?
   return proxyRequest<T>(`/api/recruiter/jobs/${jobId}/applications/search`, body, accessToken);
 }
 export function getApplicationsCount<T>(jobIds: number[], accessToken?: string | null) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-  const path = baseUrl ? `${baseUrl}/api/jobs/applications/count` : "/api/jobs/applications/count";
-  return proxyRequest<T>(path, { jobIds }, accessToken);
+  return proxyRequest<T>("/api/jobs/applications/count", { jobIds }, accessToken);
 }

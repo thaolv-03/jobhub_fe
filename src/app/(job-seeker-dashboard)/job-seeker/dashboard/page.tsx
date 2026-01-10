@@ -726,7 +726,7 @@ export default function JobSeekerDashboardPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit">Lưu thay i</Button>
+                  <Button type="submit">Lưu thay đổi</Button>
                 </form>
               </Form>
             </CardContent>
