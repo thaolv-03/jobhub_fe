@@ -13,6 +13,7 @@ const normalizeSort = (body: unknown) => {
   return { ...rest, sortedBy };
 };
 
+
 async function proxyRequest<T>(path: string, body: unknown, accessToken?: string | null): Promise<ApiResponse<T>> {
   const normalized = normalizeSort(body);
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
