@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ const fallbackRecommendedJobs = [
 
 export function RecommendedJobsPanel() {
   const { toast } = useToast();
+  const pathname = usePathname();
   const [recommendedJobs, setRecommendedJobs] = React.useState<Job[]>([]);
   const [isRecommendedLoading, setIsRecommendedLoading] = React.useState(false);
   const [savingFavoriteId, setSavingFavoriteId] = React.useState<number | null>(null);
@@ -51,30 +53,45 @@ export function RecommendedJobsPanel() {
   const [recommendedSearch, setRecommendedSearch] = React.useState("");
   const [recommendedPage, setRecommendedPage] = React.useState(0);
 
-  React.useEffect(() => {
+  const loadRecommendations = React.useCallback(async () => {
     let mounted = true;
-    const loadRecommendations = async () => {
-      try {
-        setIsRecommendedLoading(true);
-        const data = await recommendJobs({
-          pagination: { page: 0, pageSize: 10 },
-          sortBy: "createAt",
-          sortOrder: "DESC",
-        });
-        if (!mounted) return;
-        setRecommendedJobs(data.items);
-      } catch {
-        if (!mounted) return;
-        setRecommendedJobs([]);
-      } finally {
-        if (mounted) setIsRecommendedLoading(false);
-      }
-    };
-    void loadRecommendations();
+    try {
+      setIsRecommendedLoading(true);
+      const data = await recommendJobs({
+        pagination: { page: 0, pageSize: 10 },
+        sortBy: "createAt",
+        sortOrder: "DESC",
+      });
+      if (!mounted) return;
+      setRecommendedJobs(data.items);
+    } catch {
+      if (!mounted) return;
+      setRecommendedJobs([]);
+    } finally {
+      if (mounted) setIsRecommendedLoading(false);
+    }
     return () => {
       mounted = false;
     };
   }, []);
+
+  React.useEffect(() => {
+    void loadRecommendations();
+  }, [loadRecommendations, pathname]);
+
+  React.useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadRecommendations();
+      }
+    };
+    window.addEventListener("focus", handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleVisibility);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [loadRecommendations]);
 
   React.useEffect(() => {
     let mounted = true;
