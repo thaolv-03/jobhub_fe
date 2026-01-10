@@ -28,12 +28,25 @@ async function proxyRequest<T>(path: string, body: unknown, accessToken?: string
   });
 }
 
+async function localRequest<T>(path: string, body: unknown, accessToken?: string | null): Promise<ApiResponse<T>> {
+  const normalized = normalizeSort(body);
+  return fetchWithAuth<T>(path, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(normalized ?? {}),
+    accessToken,
+  });
+}
+
 export function searchJobs<T>(body: unknown, accessToken?: string | null) {
   return proxyRequest<T>("/api/recruiter/jobs/search", body, accessToken);
 }
 
 export function searchApplications<T>(jobId: number, body: unknown, accessToken?: string | null) {
-  return proxyRequest<T>(`/api/recruiter/jobs/${jobId}/applications/search`, body, accessToken);
+  return localRequest<T>(`/api/recruiter/jobs/${jobId}/applications/search`, body, accessToken);
 }
 export function getApplicationsCount<T>(jobIds: number[], accessToken?: string | null) {
   return proxyRequest<T>("/api/jobs/applications/count", { jobIds }, accessToken);
