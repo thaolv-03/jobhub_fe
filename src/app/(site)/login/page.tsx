@@ -47,6 +47,8 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
+  const [googleButtonWidth, setGoogleButtonWidth] = useState<number | null>(null);
+  const googleButtonContainerRef = useRef<HTMLDivElement | null>(null);
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
@@ -154,7 +156,21 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!isGoogleLoaded || !googleClientId || !googleButtonRef.current) {
+    if (!googleButtonContainerRef.current) return;
+    const updateWidth = () => {
+      const width = googleButtonContainerRef.current?.clientWidth ?? 0;
+      if (width > 0) {
+        setGoogleButtonWidth(Math.min(360, Math.floor(width)));
+      }
+    };
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(googleButtonContainerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isGoogleLoaded || !googleClientId || !googleButtonRef.current || !googleButtonWidth) {
       return;
     }
     const googleAccounts = window.google?.accounts;
@@ -169,10 +185,10 @@ export default function LoginPage() {
     googleAccounts.id.renderButton(googleButtonRef.current, {
       theme: "outline",
       size: "large",
-      width: "100%",
+      width: `${googleButtonWidth}`,
       text: "continue_with",
     });
-  }, [googleClientId, isGoogleLoaded]);
+  }, [googleClientId, googleButtonWidth, isGoogleLoaded]);
 
   return (
     <main className="flex-1 py-12">
@@ -228,7 +244,9 @@ export default function LoginPage() {
                 </div>
                 {googleClientId ? (
                   <div className="space-y-2">
-                    <div ref={googleButtonRef} className={isLoading ? "pointer-events-none opacity-70" : ""} />
+                    <div ref={googleButtonContainerRef} className="w-full">
+                      <div ref={googleButtonRef} className={isLoading ? "pointer-events-none opacity-70" : ""} />
+                    </div>
                   </div>
                 ) : (
                   <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">

@@ -398,7 +398,7 @@ export default function JobsPage() {
                       className="cursor-pointer border-emerald-100/80 bg-emerald-50/50 transition-shadow hover:shadow-md"
                       onClick={() => router.push(`/jobs/${job.jobId}`)}
                     >
-                      <CardHeader className="grid grid-cols-[auto_1fr_auto] items-start gap-4">
+                      <CardHeader className="grid grid-cols-[auto_1fr] items-start gap-4">
                         {companyAvatar ? (
                           <Image
                             src={companyAvatar}
@@ -429,7 +429,9 @@ export default function JobsPage() {
                             <p className="flex items-center gap-1"><DollarSign className="w-4 h-4" />{formatSalary(job)}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -445,11 +447,14 @@ export default function JobsPage() {
                               <Bookmark className="h-5 w-5" />
                             )}
                           </Button>
-                          <Link href={`/jobs/${job.jobId}`}>
+                          <Link
+                            href={`/jobs/${job.jobId}`}
+                            onClick={(event) => event.stopPropagation()}
+                          >
                             <Button className="bg-emerald-600 text-white hover:bg-emerald-700">Ứng tuyển</Button>
                           </Link>
                         </div>
-                      </CardHeader>
+                      </CardContent>
                     </Card>
                   );
                 })
